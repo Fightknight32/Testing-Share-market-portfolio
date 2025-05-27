@@ -94,6 +94,22 @@
             stroke-width: 0.5px;
             stroke-dasharray: 2 2;
         }
+        .tooltip { 
+            position: absolute;
+            background-color: rgba(15, 23, 42, 0.9); /* slate-900 with more opacity */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none; 
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            border: 1px solid #334155; /* slate-700 */
+            z-index: 1000; /* Ensure tooltip is on top */
+            /* Positioning will be handled by JS */
+        }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
@@ -323,7 +339,7 @@
                     querySnapshot.forEach((doc) => holdingsData.push({ id: doc.id, ...doc.data() }));
                     setHoldings(holdingsData);
                     if (portfolioHistory.length > 0 || querySnapshot.empty) {
-                         // setIsLoading(false); // Potentially defer this
+                         // setIsLoading(false); // Defer to history listener
                     }
                     setError(null);
                 }, (err) => {
@@ -337,7 +353,7 @@
                     const historyData = [];
                     querySnapshot.forEach((doc) => historyData.push({ id: doc.id, ...doc.data() }));
                     setPortfolioHistory(historyData);
-                    setIsLoading(false); // Both subscriptions are set up or have fired.
+                    setIsLoading(false); 
                 }, (err) => {
                     console.error("Error fetching portfolio history:", err);
                     setIsLoading(false); 
@@ -643,7 +659,7 @@
             const totalInvestmentForChart = portfolioSummary.totalInvestment;
             const pieData = holdings.map(h => ({
                 symbol: h.symbol,
-                name: h.name, // Keep full name for tooltip/internal use
+                name: h.name,
                 displayName: `${h.symbol} (${h.name.length > 15 ? h.name.substring(0, 12) + '...' : h.name})`,
                 value: (h.quantity || 0) * (h.purchasePrice || 0),
                 percentage: totalInvestmentForChart > 0 ? (((h.quantity || 0) * (h.purchasePrice || 0)) / totalInvestmentForChart) * 100 : 0
@@ -680,7 +696,7 @@
                                 );
                             })}
                         </svg>
-                         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 w-full max-w-xl"> {/* Adjusted grid for better spacing */}
+                         <div className="mt-6 grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-3 w-full max-w-xl"> {/* More responsive grid for legend */}
                             {data.map((slice, index) => (
                                 <div key={slice.symbol} className="flex items-center text-sm">
                                     <span className="inline-block w-3.5 h-3.5 mr-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[index % colors.length] }}></span>
@@ -696,36 +712,50 @@
 
             const SvgStockPerformanceBarChart = ({ data, width = 500, height = 350 }) => {
                 const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
-
+            
                 if (!data || data.length === 0) {
                     return <p className="text-center text-slate-400 py-8">No holdings to display P/L.</p>;
                 }
             
                 const sortedData = [...data].sort((a, b) => a.symbol.localeCompare(b.symbol));
             
-                const padding = { top: 20, right: 20, bottom: 70, left: 70 }; // Increased bottom for rotated labels
+                const padding = { top: 20, right: 20, bottom: 80, left: 70 }; // Increased bottom for rotated labels
                 const chartWidth = width - padding.left - padding.right;
                 const chartHeight = height - padding.top - padding.bottom;
             
                 const barGroupWidth = chartWidth / sortedData.length;
                 const barWidth = Math.max(5, barGroupWidth * 0.35);
-                const barSpacing = barGroupWidth * 0.1; // Space between two bars of a group
+                const barSpacing = barGroupWidth * 0.1;
             
                 const allValues = sortedData.flatMap(item => [item.investment, item.pnl]);
-                const maxValue = Math.max(0, ...allValues.filter(v => v > 0));
-                const minValue = Math.min(0, ...allValues.filter(v => v < 0));
-            
-                const yRange = maxValue - minValue === 0 ? 1 : maxValue - minValue;
-                const yScale = (value) => padding.top + chartHeight - ((value - minValue) / yRange) * chartHeight;
-                const zeroLineY = yScale(0);
+                const maxValue = Math.max(0.01, ...allValues.filter(v => v > 0)); // Ensure maxValue is at least slightly positive if all are 0 or negative
+                const minValue = Math.min(-0.01, ...allValues.filter(v => v < 0)); // Ensure minValue is at least slightly negative
+                
+                let yRange = maxValue - minValue;
+                if (yRange === 0) { // Handle case where all values (investment & pnl) are zero or only one type of value exists
+                    if (maxValue > 0) yRange = maxValue * 1.2; // If only positive, scale based on max
+                    else if (minValue < 0) yRange = Math.abs(minValue) * 1.2; // If only negative, scale based on min
+                    else yRange = 1; // Default if all are truly zero
+                } else {
+                    yRange *= 1.1; // Add some padding to the range
+                }
 
+                const effectiveMinY = minValue < 0 ? minValue - yRange * 0.05 : 0 - yRange * 0.05;
+                const effectiveMaxY = maxValue > 0 ? maxValue + yRange * 0.05 : 0 + yRange * 0.05;
+                const finalYRange = effectiveMaxY - effectiveMinY;
+
+
+                const yScale = (value) => padding.top + chartHeight - ((value - effectiveMinY) / finalYRange) * chartHeight;
+                const zeroLineY = yScale(0);
+            
                 const handleMouseOver = (e, item, type) => {
                     const value = type === 'investment' ? item.investment : item.pnl;
+                    const rect = e.target.getBoundingClientRect();
                     setTooltip({
                         visible: true,
                         content: `${item.symbol} (${item.name}) - ${type === 'investment' ? 'Invested' : 'P/L'}: ${formatCurrency(value)}`,
-                        x: e.pageX, 
-                        y: e.pageY - 10 // Position above cursor
+                        x: rect.left + window.scrollX + rect.width / 2,
+                        y: rect.top + window.scrollY - 10
                     });
                 };
                 const handleMouseOut = () => {
@@ -733,11 +763,11 @@
                 };
             
                 return (
-                    <div className="chart-container my-6 relative">
-                        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+                    <div className="chart-container my-6 relative w-full"> {/* Ensure container takes full width */}
+                        <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
                             {/* Y-axis Grid Lines and Labels */}
                             {Array.from({ length: 6 }).map((_, i) => {
-                                const value = minValue + (i / 5) * yRange;
+                                const value = effectiveMinY + (i / 5) * finalYRange;
                                 const y = yScale(value);
                                 return (
                                     <g key={`y-grid-${i}`}>
@@ -746,7 +776,6 @@
                                     </g>
                                 );
                             })}
-                            {/* Zero line (thicker) */}
                             <line x1={padding.left} y1={zeroLineY} x2={padding.left + chartWidth} y2={zeroLineY} className="bar-graph-axis" strokeWidth="1.5" />
             
                             {sortedData.map((item, index) => {
@@ -785,7 +814,7 @@
                             })}
                         </svg>
                         {tooltip.visible && (
-                            <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y, opacity: 1, transform: `translate(15px, -25px)` }}>
+                            <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y, opacity: 1, transform: `translate(-50%, -100%)` }}>
                                 {tooltip.content}
                             </div>
                         )}
