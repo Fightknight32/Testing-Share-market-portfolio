@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Share Portfolio Tracker</title>
-    <script src="https://cdn.tailwindcss.com"></script> {/* Loads synchronously for styling */}
+    <script src="https://cdn.tailwindcss.com"></script> 
     <script src="https://unpkg.com/react@18/umd/react.development.js" defer></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" defer></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js" defer></script>
@@ -101,7 +101,7 @@
         let app;
         let auth;
         let db;
-        let firebaseAuthPersistencePromise; // To manage persistence setting
+        let firebaseAuthPersistencePromise; 
 
         try {
             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_") || 
@@ -117,15 +117,12 @@
             auth = firebase.auth();
             db = firebase.firestore();
 
-            // Explicitly set persistence to LOCAL
             firebaseAuthPersistencePromise = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                 .then(() => {
                     console.log("Firebase auth persistence set to LOCAL.");
                 })
                 .catch((error) => {
                     console.error("Error setting Firebase auth persistence:", error);
-                    // This error might not be fatal for app functionality if default persistence works,
-                    // but it's important to log.
                 });
 
         } catch (error) {
@@ -278,50 +275,51 @@
 
             useEffect(() => {
                 if (!auth) { 
-                     setError("Firebase Auth service is not available. App cannot function.");
+                    setError("Firebase Auth service is not available. App cannot function.");
                     setIsAuthReady(true); 
                     setIsLoading(false); 
                     return;
                 }
 
-                // Ensure persistence is attempted before setting up onAuthStateChanged
+                let unsubscribeAuthListener;
+
                 const setupAuthListener = () => {
-                    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+                    console.log("Setting up onAuthStateChanged listener.");
+                    unsubscribeAuthListener = auth.onAuthStateChanged(async (currentUser) => {
+                        console.log("onAuthStateChanged fired. User:", currentUser ? currentUser.uid : "null");
                         setUserState(currentUser); 
                         setUserId(currentUser ? currentUser.uid : null);
                         setIsAuthReady(true); 
-                        if (!currentUser && !auth.currentUser) { // Check if truly no user after persistence attempt
-                            // If anonymous sign-in is desired as a fallback (not for email/pass only)
-                            // try {
-                            //     await auth.signInAnonymously();
-                            // } catch (authError) {
-                            //     console.error("Error during anonymous sign-in:", authError);
-                            //     setError(`Anonymous authentication failed: ${authError.message}.`);
-                            //     setIsLoading(false); 
-                            // }
-                            setIsLoading(false); // No user, stop loading
+                        // isLoading is primarily for data fetching now, or initial auth check
+                        if (!currentUser) {
+                            setIsLoading(false); // No user, so not loading data
                         }
-                        // If currentUser exists, data loading will be handled by the next useEffect
                     });
-                    return unsubscribe;
                 };
-
-                let unsubscribeAuth;
+                
+                // Wait for persistence to be set (or attempt to be set)
+                // firebaseAuthPersistencePromise is defined globally after Firebase init
                 if (firebaseAuthPersistencePromise) {
-                    firebaseAuthPersistencePromise.finally(() => { // Run after persistence attempt, regardless of outcome
-                       unsubscribeAuth = setupAuthListener();
+                    firebaseAuthPersistencePromise.finally(() => { 
+                       setupAuthListener();
                     });
-                } else { // Should not happen if Firebase init was successful
-                    unsubscribeAuth = setupAuthListener();
+                } else { // Fallback if promise wasn't set, though it should be
+                    console.warn("firebaseAuthPersistencePromise not found, setting up listener directly.");
+                    setupAuthListener();
                 }
                 
                 return () => {
-                    if (unsubscribeAuth) unsubscribeAuth();
+                    if (unsubscribeAuthListener) {
+                        console.log("Cleaning up onAuthStateChanged listener.");
+                        unsubscribeAuthListener();
+                    }
                 };
             }, []); 
 
             useEffect(() => {
-                if (!isAuthReady) return; 
+                if (!isAuthReady) {
+                    return;
+                }
 
                 if (!userId) { 
                     setHoldings([]); 
@@ -352,7 +350,10 @@
                     setError(`Failed to load portfolio: ${err.message}.`);
                     setIsLoading(false);
                 });
-                return () => unsubscribe();
+
+                return () => {
+                    unsubscribe();
+                };
             }, [isAuthReady, userId]); 
 
             const handleSaveHolding = async (holdingData) => {
@@ -561,7 +562,13 @@
             }, [holdings]);
 
             // --- Render Logic ---
-            if (!isAuthReady || isLoading) return <LoadingSpinner message={!isAuthReady ? "Initializing authentication..." : (userId ? "Loading portfolio data..." : "Authenticating...")} />;
+            if (!isAuthReady || isLoading) {
+                let message = "Initializing...";
+                 if (!isAuthReady) message = "Initializing authentication...";
+                 else if (isLoading && !userId) message = "Authenticating..."; // Auth is ready, but no user yet, still loading
+                 else if (isLoading && userId) message = "Loading portfolio data...";
+                return <LoadingSpinner message={message} />;
+            }
             
             if (!auth || !db) { 
                  return (
