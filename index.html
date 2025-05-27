@@ -16,9 +16,9 @@
     <style>
         body {
             margin: 0;
-            font-family: 'Inter', sans-serif; /* Using Inter font */
-            background-color: #0f172a; /* Slightly darker slate-900 */
-            color: #e2e8f0; /* slate-200 for better contrast */
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; /* slate-900 */
+            color: #e2e8f0; /* slate-200 */
         }
         html, body, #root {
             min-height: 100vh;
@@ -66,61 +66,44 @@
         .critical-error-message ol li {
             margin-bottom: 0.5rem;
         }
-        .pie-chart-container svg {
+        .chart-container svg { 
             display: block;
-            margin: auto;
-            transition: transform 0.3s ease-out;
+            margin-left: auto;
+            margin-right: auto;
         }
         .pie-chart-slice {
-            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-            cursor: pointer;
+            stroke-width: 0; 
+            cursor: default; 
         }
-        .pie-chart-slice:hover {
-            opacity: 0.85;
-            transform: scale(1.03);
+        .bar-graph-bar {
+            transition: fill 0.2s ease-in-out, opacity 0.2s ease-in-out;
         }
-        .tooltip {
-            position: absolute;
-            background-color: rgba(0,0,0,0.75);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none; /* Allow clicks to pass through to slices */
-            white-space: nowrap;
-            opacity: 0;
-            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-            transform: translate(-50%, -120%); /* Position above cursor */
-            z-index: 100;
+        .bar-graph-bar:hover {
+            opacity: 0.8;
         }
-        /* Custom scrollbar for better aesthetics */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        .bar-graph-axis, .line-graph-axis { /* Combined for consistency */
+            stroke: #475569; 
+            stroke-width: 1;
         }
-        ::-webkit-scrollbar-track {
-            background: #1e293b; /* slate-800 */
-            border-radius: 10px;
+        .bar-graph-text, .line-graph-text { /* Combined for consistency */
+            font-size: 10px;
+            fill: #94a3b8; 
         }
-        ::-webkit-scrollbar-thumb {
-            background: #475569; /* slate-600 */
-            border-radius: 10px;
+        .bar-graph-grid-line {
+            stroke: #334155; /* slate-700 for subtle grid */
+            stroke-width: 0.5px;
+            stroke-dasharray: 2 2;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b; /* slate-500 */
-        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
 <body>
     <div id="root">
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 20px;">
-            <h1 style="font-size: 1.875rem; font-weight: bold; color: #60a5fa; margin-bottom: 1rem;">Loading Portfolio Tracker...</h1>
-            <p style="color: #9ca3af;">If this message persists, please ensure JavaScript is enabled and check the browser console for errors.</p>
-            <svg style="width: 3rem; height: 3rem; margin-top: 1rem; animation: spin 1s linear infinite; color: #3b82f6;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-        </div>
+        {/* Initial loading message */}
     </div>
 
     <script type="text/babel"> 
@@ -181,7 +164,6 @@
             throw new Error("Halting script execution due to Firebase initialization failure. Please fix the firebaseConfig."); 
         }
 
-        // --- Icon Placeholders ---
         const IconPlaceholder = ({ text, className = "" }) => <span className={`inline-block px-1 ${className}`}>{text}</span>;
         const PlusCircle = () => <IconPlaceholder text="[+]" className="text-green-400" />;
         const Trash2 = () => <IconPlaceholder text="[Del]" className="text-red-400" />;
@@ -199,6 +181,7 @@
         const LogInIcon = () => <IconPlaceholder text="[Login]" />;
         const PieChartIcon = () => <IconPlaceholder text="[📊]" />;
         const ListIcon = () => <IconPlaceholder text="[☰]" />;
+        const BarChartIcon = () => <IconPlaceholder text="[|||]" />;
 
 
         const formatCurrency = (amount) => {
@@ -209,18 +192,20 @@
             if (typeof percentage !== 'number' || isNaN(percentage)) return '0.00%';
             return `${percentage.toFixed(2)}%`;
         };
-        const formatDate = (timestamp) => {
+        const formatDate = (timestamp, options = {}) => {
             if (!timestamp) return 'N/A';
             try {
+                let date;
                 if (timestamp.seconds) { 
-                    return new Date(timestamp.seconds * 1000).toLocaleString();
+                    date = new Date(timestamp.seconds * 1000);
+                } else if (timestamp instanceof Date) { 
+                    date = timestamp;
+                } else if (typeof timestamp === 'object' && timestamp._seconds) { 
+                    date = new Date(timestamp._seconds * 1000);
+                } else {
+                    return 'Invalid Date';
                 }
-                if (timestamp instanceof Date) { 
-                    return timestamp.toLocaleString();
-                }
-                if (typeof timestamp === 'object' && timestamp._seconds) { 
-                    return new Date(timestamp._seconds * 1000).toLocaleString();
-                }
+                return date.toLocaleString(undefined, options);
             } catch (e) { console.warn("Error formatting date:", timestamp, e); }
             return 'Invalid Date';
         };
@@ -288,7 +273,6 @@
             );
         };
 
-        // --- Main Application Component ---
         function App() {
             const [user, setUserState] = useState(null);
             const [userId, setUserId] = useState(null);
@@ -305,6 +289,7 @@
             const [lastPriceUpdateAttempt, setLastPriceUpdateAttempt] = useState(null);
             const apiKeyIndexRef = useRef(0);
             const [currentView, setCurrentView] = useState('portfolio'); 
+            const [portfolioHistory, setPortfolioHistory] = useState([]);
 
             useEffect(() => {
                 if (!auth) { 
@@ -325,22 +310,50 @@
 
             useEffect(() => {
                 if (!isAuthReady) return; 
-                if (!userId) { setHoldings([]); setIsLoading(false); return; }
+                if (!userId) { setHoldings([]); setPortfolioHistory([]); setIsLoading(false); return; }
                 if (!db) { setError("Firestore database service is not available."); setIsLoading(false); return; }
+                
                 setIsLoading(true); 
+                let unsubHoldings, unsubHistory;
+
                 const holdingsCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`;
-                const q = db.collection(holdingsCollectionPath); 
-                const unsubscribe = q.onSnapshot((querySnapshot) => {
+                const qHoldings = db.collection(holdingsCollectionPath); 
+                unsubHoldings = qHoldings.onSnapshot((querySnapshot) => {
                     const holdingsData = [];
                     querySnapshot.forEach((doc) => holdingsData.push({ id: doc.id, ...doc.data() }));
                     setHoldings(holdingsData);
-                    setIsLoading(false); setError(null);
+                    if (portfolioHistory.length > 0 || querySnapshot.empty) {
+                         // setIsLoading(false); // Potentially defer this
+                    }
+                    setError(null);
                 }, (err) => {
                     console.error("Error fetching holdings:", err);
                     setError(`Failed to load portfolio: ${err.message}.`); setIsLoading(false);
                 });
-                return () => unsubscribe();
+
+                const historyCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/portfolioHistory`;
+                const qHistory = db.collection(historyCollectionPath).orderBy("timestamp", "asc").limit(30); 
+                unsubHistory = qHistory.onSnapshot((querySnapshot) => {
+                    const historyData = [];
+                    querySnapshot.forEach((doc) => historyData.push({ id: doc.id, ...doc.data() }));
+                    setPortfolioHistory(historyData);
+                    setIsLoading(false); // Both subscriptions are set up or have fired.
+                }, (err) => {
+                    console.error("Error fetching portfolio history:", err);
+                    setIsLoading(false); 
+                });
+
+                return () => { 
+                    if (unsubHoldings) unsubHoldings(); 
+                    if (unsubHistory) unsubHistory();
+                };
             }, [isAuthReady, userId]); 
+
+            const portfolioSummary = useMemo(() => {
+                let ti=0, tcv=0; holdings.forEach(h => { ti+=(h.quantity||0)*(h.purchasePrice||0); tcv+=(h.quantity||0)*(h.currentPrice||0);});
+                const tr=tcv-ti; const trp=ti!==0?(tr/ti)*100:0;
+                return { totalInvestment:ti, totalCurrentValue:tcv, totalReturns:tr, totalReturnsPercentage:trp };
+            }, [holdings]);
 
             const handleSaveHolding = async (holdingData) => {
                 if (!db || !userId) { setError("Database not available."); return; }
@@ -397,7 +410,6 @@
                         if (isNaN(price)) { lastFetchError = new Error(`Parsed price for ${symbolWithExchange} is NaN.`); console.warn(lastFetchError.message); continue; }
                         const docRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holding.id);
                         await docRef.update({ currentPrice: price, lastPriceUpdate: firebase.firestore.FieldValue.serverTimestamp(), fetchedSymbol: symbolWithExchange });
-                        setInfo(`Updated ${baseSymbol} (${symbolWithExchange}) to ${formatCurrency(price)}.`);
                         return { success: true, symbol: baseSymbol };
                     } catch (e) { lastFetchError = e; console.error(`Fetch error for ${symbolWithExchange}:`, e); }
                 }
@@ -411,27 +423,63 @@
                 setInfo(`Refreshing prices for ${holdings.length} holdings...`);
                 setLastPriceUpdateAttempt(new Date());
                 let sC=0, eC=0; let errMsgs=[];
-                for (let i=0; i<holdings.length; i++) {
-                    const h=holdings[i]; const key=ALPHA_VANTAGE_API_KEYS[apiKeyIndexRef.current];
-                    const res = await fetchEodPriceForHolding(h, key);
-                    apiKeyIndexRef.current = (apiKeyIndexRef.current + 1) % ALPHA_VANTAGE_API_KEYS.length;
-                    if (res.success) sC++; else { eC++; if(res.error) errMsgs.push(`${h.symbol}: ${res.error.substring(0,100)}...`);}
-                    if (i<holdings.length-1) { const d=10000; setInfo(`Wait ${d/1000}s... (${i+1}/${holdings.length})`); await new Promise(r => setTimeout(r,d));}
-                }
-                let sumMsg = `Refresh: ${sC} ok, ${eC} fail.`; if (eC>0) setError(`${eC} stock(s) failed. ${errMsgs[0]||''} See console.`);
-                setInfo(sumMsg); setIsFetchingPrices(false);
+                
+                const priceUpdatePromises = holdings.map((h, i) => {
+                    return new Promise(async (resolve) => {
+                        if (i > 0) { 
+                            const delay = 10000; 
+                            setInfo(`Waiting ${delay/1000}s... (${i}/${holdings.length} processed)`);
+                            await new Promise(r => setTimeout(r, delay));
+                        }
+                        const key = ALPHA_VANTAGE_API_KEYS[apiKeyIndexRef.current];
+                        apiKeyIndexRef.current = (apiKeyIndexRef.current + 1) % ALPHA_VANTAGE_API_KEYS.length;
+                        const res = await fetchEodPriceForHolding(h, key);
+                        resolve(res);
+                    });
+                });
+
+                const results = await Promise.all(priceUpdatePromises);
+                results.forEach(res => {
+                    if (res.success) sC++;
+                    else { eC++; if(res.error) errMsgs.push(`${res.symbol}: ${res.error.substring(0,100)}...`);}
+                });
+                
+                setTimeout(async () => { 
+                    let currentTotalValue = 0;
+                    let currentTotalInvestment = 0;
+                    const updatedHoldingsSnapshot = await db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).get();
+                    const currentHoldingsData = [];
+                    updatedHoldingsSnapshot.forEach(doc => currentHoldingsData.push(doc.data()));
+
+                    currentHoldingsData.forEach(h => {
+                        currentTotalValue += (h.quantity || 0) * (h.currentPrice || 0);
+                        currentTotalInvestment += (h.quantity || 0) * (h.purchasePrice || 0);
+                    });
+
+                    if (sC > 0 && userId && currentTotalValue > 0) { 
+                        try {
+                            const historyCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/portfolioHistory`;
+                            await db.collection(historyCollectionPath).add({
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                                totalPortfolioValue: currentTotalValue,
+                                totalInvestment: currentTotalInvestment 
+                            });
+                            console.log("Portfolio history snapshot saved.");
+                        } catch (historyError) {
+                            console.error("Error saving portfolio history:", historyError);
+                        }
+                    }
+                    let sumMsg = `Refresh: ${sC} ok, ${eC} fail.`; if (eC>0) setError(`${eC} stock(s) failed. ${errMsgs[0]||''} See console.`);
+                    setInfo(sumMsg); setIsFetchingPrices(false);
+                }, 2500);
+
             };
 
             const handleLogout = async () => { if (!auth) return; try { await auth.signOut(); } catch (e) { setError(`Logout fail: ${e.message}`);}};
-            const portfolioSummary = useMemo(() => {
-                let ti=0, tcv=0; holdings.forEach(h => { ti+=(h.quantity||0)*(h.purchasePrice||0); tcv+=(h.quantity||0)*(h.currentPrice||0);});
-                const tr=tcv-ti; const trp=ti!==0?(tr/ti)*100:0;
-                return { totalInvestment:ti, totalCurrentValue:tcv, totalReturns:tr, totalReturnsPercentage:trp };
-            }, [holdings]);
-
+            
             if (!isAuthReady || isLoading) {
                 let msg="Initializing...";
-                if(isAuthReady && isLoading && !userId) msg="Authenticating...";
+                if(isAuthReady && isLoading && !userId && auth) msg="Authenticating...";
                 else if(isAuthReady && isLoading && userId) msg="Loading portfolio...";
                 return <LoadingSpinner message={msg} />;
             }
@@ -515,7 +563,7 @@
                                 {holdings.length > 0 && <HoldingsTable holdings={holdings} onDelete={requestDeleteHolding} onEdit={handleEditHolding} />}
                             </div>
                         )}
-                        {currentView === 'dashboard' && <DashboardView holdings={holdings} portfolioSummary={portfolioSummary} />}
+                        {currentView === 'dashboard' && <DashboardView holdings={holdings} portfolioSummary={portfolioSummary} portfolioHistory={portfolioHistory} />}
                         
                         <footer className="mt-16 pt-8 border-t border-slate-700 text-center text-sm text-slate-500">
                             <p>&copy; {new Date().getFullYear()} Portfolio Tracker. Namespace: <span className="font-mono">{FIRESTORE_APP_ID_NAMESPACE}</span></p>
@@ -539,7 +587,7 @@
         };
         const SummaryCard = ({ title, value, icon, valueColor = "text-slate-100" }) => ( 
             <div className="bg-slate-800 p-6 rounded-xl shadow-lg hover:shadow-sky-500/30 transition-all duration-300 ease-in-out transform hover:-translate-y-1 border border-slate-700">
-                <div className="flex items-center justify-between mb-3"> <h3 className="text-base font-medium text-slate-400">{title}</h3> {icon && React.isValidElement(icon) && <div className="p-2.5 bg-slate-700 rounded-full">{React.cloneElement(icon)}</div>} </div>
+                <div className="flex items-center justify-between mb-3"> <h3 className="text-base font-medium text-slate-400">{title}</h3> {icon && React.isValidElement(icon) && <div className="p-2.5 bg-slate-700 rounded-full">{icon}</div>} </div>
                 <p className={`text-3xl font-bold ${valueColor}`}>{value}</p>
             </div>
         );
@@ -577,7 +625,7 @@
         const InfoMessage = ({ message, onClose }) => ( <div className="bg-sky-700/80 border border-sky-600 text-sky-100 px-4 py-3 rounded-lg relative mb-6 shadow-lg backdrop-blur-sm"> <div className="flex items-center"><Info className="h-5 w-5 mr-3 text-sky-300 shrink-0"/><div><strong className="font-semibold">Info: </strong><span className="block sm:inline">{message}</span></div></div> <button onClick={onClose} className="absolute top-2.5 right-2.5 p-1 text-sky-300 hover:text-sky-100 transition-colors" title="Close"><XCircle className="h-5 w-5"/></button> </div> );
 
         // --- Dashboard Component ---
-        const DashboardView = ({ holdings, portfolioSummary }) => {
+        const DashboardView = ({ holdings, portfolioSummary, portfolioHistory }) => {
             if (!holdings || holdings.length === 0) {
                 return <div className="mt-10 text-center p-10 bg-slate-800 rounded-xl shadow-xl border border-slate-700"><Briefcase className="mx-auto h-20 w-20 text-sky-500 mb-6" /><h2 className="text-3xl font-semibold text-slate-200 mb-4">Dashboard is Empty</h2><p className="text-slate-400 text-lg">Add some holdings to see your portfolio statistics and charts.</p></div>;
             }
@@ -594,38 +642,23 @@
             
             const totalInvestmentForChart = portfolioSummary.totalInvestment;
             const pieData = holdings.map(h => ({
-                name: h.symbol,
+                symbol: h.symbol,
+                name: h.name, // Keep full name for tooltip/internal use
+                displayName: `${h.symbol} (${h.name.length > 15 ? h.name.substring(0, 12) + '...' : h.name})`,
                 value: (h.quantity || 0) * (h.purchasePrice || 0),
                 percentage: totalInvestmentForChart > 0 ? (((h.quantity || 0) * (h.purchasePrice || 0)) / totalInvestmentForChart) * 100 : 0
             })).filter(item => item.value > 0).sort((a,b) => b.value - a.value); 
 
-
             const SvgPieChart = ({ data, size = 250 }) => {
-                const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
-
                 if (!data || data.length === 0) return <p className="text-center text-slate-400 py-8">Not enough data for chart.</p>;
                 const radius = size / 2.8; 
                 const cx = size / 2;
                 const cy = size / 2;
                 let accumulatedAngle = -Math.PI / 2; 
-
                 const colors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4'];
-
-                const handleMouseOver = (e, slice) => {
-                    setTooltip({
-                        visible: true,
-                        content: `${slice.name}: ${slice.percentage.toFixed(1)}% (${formatCurrency(slice.value)})`,
-                        x: e.clientX,
-                        y: e.clientY
-                    });
-                };
-                const handleMouseOut = () => {
-                    setTooltip({ visible: false, content: '', x: 0, y: 0 });
-                };
-
-
+                
                 return (
-                    <div className="pie-chart-container my-6 relative">
+                    <div className="chart-container my-6 relative flex flex-col items-center">
                         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
                             {data.map((slice, index) => {
                                 const angle = (slice.percentage / 100) * 2 * Math.PI;
@@ -639,28 +672,127 @@
                                 
                                 return (
                                     <path 
-                                        key={slice.name} 
+                                        key={slice.symbol} 
                                         d={pathData} 
                                         fill={colors[index % colors.length]} 
                                         className="pie-chart-slice"
-                                        onMouseOver={(e) => handleMouseOver(e, slice)}
-                                        onMouseOut={handleMouseOut}
                                     />
                                 );
                             })}
                         </svg>
+                         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 w-full max-w-xl"> {/* Adjusted grid for better spacing */}
+                            {data.map((slice, index) => (
+                                <div key={slice.symbol} className="flex items-center text-sm">
+                                    <span className="inline-block w-3.5 h-3.5 mr-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[index % colors.length] }}></span>
+                                    <span className="text-slate-300" title={`${slice.symbol} (${slice.name}): ${slice.percentage.toFixed(1)}%`}>
+                                        {slice.displayName}: <span className="font-medium text-slate-100">{slice.percentage.toFixed(1)}%</span>
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            const SvgStockPerformanceBarChart = ({ data, width = 500, height = 350 }) => {
+                const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
+
+                if (!data || data.length === 0) {
+                    return <p className="text-center text-slate-400 py-8">No holdings to display P/L.</p>;
+                }
+            
+                const sortedData = [...data].sort((a, b) => a.symbol.localeCompare(b.symbol));
+            
+                const padding = { top: 20, right: 20, bottom: 70, left: 70 }; // Increased bottom for rotated labels
+                const chartWidth = width - padding.left - padding.right;
+                const chartHeight = height - padding.top - padding.bottom;
+            
+                const barGroupWidth = chartWidth / sortedData.length;
+                const barWidth = Math.max(5, barGroupWidth * 0.35);
+                const barSpacing = barGroupWidth * 0.1; // Space between two bars of a group
+            
+                const allValues = sortedData.flatMap(item => [item.investment, item.pnl]);
+                const maxValue = Math.max(0, ...allValues.filter(v => v > 0));
+                const minValue = Math.min(0, ...allValues.filter(v => v < 0));
+            
+                const yRange = maxValue - minValue === 0 ? 1 : maxValue - minValue;
+                const yScale = (value) => padding.top + chartHeight - ((value - minValue) / yRange) * chartHeight;
+                const zeroLineY = yScale(0);
+
+                const handleMouseOver = (e, item, type) => {
+                    const value = type === 'investment' ? item.investment : item.pnl;
+                    setTooltip({
+                        visible: true,
+                        content: `${item.symbol} (${item.name}) - ${type === 'investment' ? 'Invested' : 'P/L'}: ${formatCurrency(value)}`,
+                        x: e.pageX, 
+                        y: e.pageY - 10 // Position above cursor
+                    });
+                };
+                const handleMouseOut = () => {
+                    setTooltip({ visible: false, content: '', x: 0, y: 0 });
+                };
+            
+                return (
+                    <div className="chart-container my-6 relative">
+                        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+                            {/* Y-axis Grid Lines and Labels */}
+                            {Array.from({ length: 6 }).map((_, i) => {
+                                const value = minValue + (i / 5) * yRange;
+                                const y = yScale(value);
+                                return (
+                                    <g key={`y-grid-${i}`}>
+                                        <line x1={padding.left} y1={y} x2={padding.left + chartWidth} y2={y} className="bar-graph-grid-line" />
+                                        <text x={padding.left - 8} y={y} dy="0.35em" textAnchor="end" className="bar-graph-text">{formatCurrency(value)}</text>
+                                    </g>
+                                );
+                            })}
+                            {/* Zero line (thicker) */}
+                            <line x1={padding.left} y1={zeroLineY} x2={padding.left + chartWidth} y2={zeroLineY} className="bar-graph-axis" strokeWidth="1.5" />
+            
+                            {sortedData.map((item, index) => {
+                                const groupX = padding.left + index * barGroupWidth + (barGroupWidth - (barWidth * 2 + barSpacing)) / 2;
+                                
+                                const investmentBarHeight = item.investment > 0 ? Math.abs(zeroLineY - yScale(item.investment)) : 0;
+                                const investmentBarY = item.investment > 0 ? yScale(item.investment) : zeroLineY;
+
+                                const pnlBarHeight = Math.abs(zeroLineY - yScale(item.pnl));
+                                const pnlBarY = item.pnl >= 0 ? yScale(item.pnl) : zeroLineY;
+                                const pnlFillColor = item.pnl >= 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+            
+                                return (
+                                    <g key={item.symbol} transform={`translate(${groupX}, 0)`}>
+                                        <rect
+                                            x={0} y={investmentBarY} width={barWidth} height={investmentBarHeight}
+                                            fill="rgba(59, 130, 246, 0.7)" className="bar-graph-bar"
+                                            onMouseOver={(e) => handleMouseOver(e, item, 'investment')} onMouseOut={handleMouseOut}
+                                        />
+                                        <rect
+                                            x={barWidth + barSpacing} y={pnlBarY} width={barWidth} height={pnlBarHeight}
+                                            fill={pnlFillColor} className="bar-graph-bar"
+                                            onMouseOver={(e) => handleMouseOver(e, item, 'pnl')} onMouseOut={handleMouseOut}
+                                        />
+                                        <text 
+                                            x={(barWidth * 2 + barSpacing) / 2} 
+                                            y={padding.top + chartHeight + 15} 
+                                            textAnchor="middle" 
+                                            className="bar-graph-text fill-slate-300"
+                                            transform={`rotate(-45 ${(barWidth * 2 + barSpacing) / 2} ${padding.top + chartHeight + 15})`}
+                                        >
+                                            {item.symbol}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                        </svg>
                         {tooltip.visible && (
-                            <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y, opacity: 1, transform: `translate(${tooltip.x > window.innerWidth / 2 ? '-110%' : '10%'}, -120%)` }}>
+                            <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y, opacity: 1, transform: `translate(15px, -25px)` }}>
                                 {tooltip.content}
                             </div>
                         )}
-                         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
-                            {data.map((slice, index) => (
-                                <div key={slice.name} className="flex items-center text-sm">
-                                    <span className="inline-block w-3 h-3 mr-2 rounded-sm" style={{ backgroundColor: colors[index % colors.length] }}></span>
-                                    <span className="text-slate-300">{slice.name}: <span className="font-medium text-slate-100">{slice.percentage.toFixed(1)}%</span></span>
-                                </div>
-                            ))}
+                         <div className="mt-4 flex justify-center space-x-4 text-sm">
+                            <div className="flex items-center"><span className="w-3 h-3 bg-blue-500/70 mr-2 rounded-sm"></span>Invested</div>
+                            <div className="flex items-center"><span className="w-3 h-3 bg-green-500/70 mr-2 rounded-sm"></span>Profit</div>
+                            <div className="flex items-center"><span className="w-3 h-3 bg-red-500/70 mr-2 rounded-sm"></span>Loss</div>
                         </div>
                     </div>
                 );
@@ -690,6 +822,11 @@
                             <p className="text-sm text-slate-400 mb-4">Allocation of total investment by stock.</p>
                             <SvgPieChart data={pieData} />
                         </div>
+                    </div>
+                     <div className="bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-700">
+                        <h3 className="text-xl font-semibold text-slate-200 mb-2">Stock Investment vs. P/L</h3>
+                        <p className="text-sm text-slate-400 mb-4">Invested amount and current Profit/Loss for each stock.</p>
+                        <SvgStockPerformanceBarChart data={processedHoldings} />
                     </div>
                 </div>
             );
