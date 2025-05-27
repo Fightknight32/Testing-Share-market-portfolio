@@ -16,55 +16,98 @@
     <style>
         body {
             margin: 0;
-            font-family: sans-serif; 
-            background-color: #111827; 
-            color: #f3f4f6; 
+            font-family: 'Inter', sans-serif; /* Using Inter font */
+            background-color: #0f172a; /* Slightly darker slate-900 */
+            color: #e2e8f0; /* slate-200 for better contrast */
         }
         html, body, #root {
             min-height: 100vh;
         }
         .critical-error-message {
-            color: #ef4444; /* Tailwind red-500 */
-            background-color: #fee2e2; /* Tailwind red-100 */
-            border: 2px solid #f87171; /* Tailwind red-400 */
+            color: #ef4444; 
+            background-color: #fee2e2; 
+            border: 2px solid #f87171; 
             text-align: center; 
             padding: 20px;
-            margin: 20px auto; /* Center the box */
+            margin: 20px auto;
             border-radius: 8px;
-            max-width: 800px; /* Limit width for readability */
+            max-width: 800px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .critical-error-message h1 {
-            font-size: 1.75rem; /* Larger h1 */
+            font-size: 1.75rem; 
             font-weight: bold;
-            color: #b91c1c; /* Tailwind red-700 */
-            margin-bottom: 1rem; /* More space below h1 */
+            color: #b91c1c; 
+            margin-bottom: 1rem; 
         }
          .critical-error-message code {
-            background-color: #fecaca; /* Tailwind red-200 */
-            padding: 3px 6px; /* Slightly more padding */
+            background-color: #fecaca; 
+            padding: 3px 6px; 
             border-radius: 4px;
             font-family: monospace;
-            color: #991b1b; /* Tailwind red-800 */
+            color: #991b1b; 
             font-size: 0.95em;
         }
         .critical-error-message p {
-            margin-bottom: 0.75rem; /* Space between paragraphs */
-            line-height: 1.6; /* Better readability */
-            color: #7f1d1d; /* Tailwind red-900 for text */
+            margin-bottom: 0.75rem; 
+            line-height: 1.6; 
+            color: #7f1d1d; 
         }
         .critical-error-message strong {
-            color: #991b1b; /* Tailwind red-800 */
+            color: #991b1b; 
         }
         .critical-error-message ol {
             text-align: left;
             display: inline-block;
             margin-top: 0.5rem;
             margin-bottom: 1rem;
-            padding-left: 25px; /* Ensure bullets/numbers are visible */
+            padding-left: 25px; 
         }
         .critical-error-message ol li {
             margin-bottom: 0.5rem;
+        }
+        .pie-chart-container svg {
+            display: block;
+            margin: auto;
+            transition: transform 0.3s ease-out;
+        }
+        .pie-chart-slice {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .pie-chart-slice:hover {
+            opacity: 0.85;
+            transform: scale(1.03);
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.75);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none; /* Allow clicks to pass through to slices */
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            transform: translate(-50%, -120%); /* Position above cursor */
+            z-index: 100;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
         }
     </style>
 </head>
@@ -80,10 +123,9 @@
         </div>
     </div>
 
-    <script type="text/babel"> {/* Main application script, Babel will transpile this */}
+    <script type="text/babel"> 
         const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyChmrmY4JLB_Q6-DkZmg6-RHwX7KfKuIqA",
             authDomain: "test-project-9f890.firebaseapp.com",
@@ -141,20 +183,22 @@
 
         // --- Icon Placeholders ---
         const IconPlaceholder = ({ text, className = "" }) => <span className={`inline-block px-1 ${className}`}>{text}</span>;
-        const PlusCircle = () => <IconPlaceholder text="[+]" />;
-        const Trash2 = () => <IconPlaceholder text="[Del]" />;
-        const Edit3 = () => <IconPlaceholder text="[Edit]" />;
+        const PlusCircle = () => <IconPlaceholder text="[+]" className="text-green-400" />;
+        const Trash2 = () => <IconPlaceholder text="[Del]" className="text-red-400" />;
+        const Edit3 = () => <IconPlaceholder text="[Edit]" className="text-blue-400" />;
         const RefreshCw = () => <IconPlaceholder text="[Refr]" />;
-        const LogOut = () => <IconPlaceholder text="[Logout]" />;
-        const TrendingUp = () => <IconPlaceholder text="[Up]" />;
-        const TrendingDown = () => <IconPlaceholder text="[Down]" />;
-        const DollarSign = () => <IconPlaceholder text="[$]" />;
-        const Briefcase = () => <IconPlaceholder text="[Portf]" />;
-        const Info = () => <IconPlaceholder text="[i]" />;
-        const XCircle = () => <IconPlaceholder text="[X]" />;
-        const DownloadCloud = () => <IconPlaceholder text="[DL]" />;
-        const AlertTriangle = () => <IconPlaceholder text="[!]" />;
+        const LogOut = () => <IconPlaceholder text="[Logout]" className="text-red-400" />;
+        const TrendingUp = () => <IconPlaceholder text="[▲]" className="text-green-400" />;
+        const TrendingDown = () => <IconPlaceholder text="[▼]" className="text-red-400" />;
+        const DollarSign = () => <IconPlaceholder text="[$]" className="text-blue-400" />;
+        const Briefcase = () => <IconPlaceholder text="[💼]" className="text-indigo-400" />;
+        const Info = () => <IconPlaceholder text="[i]" className="text-blue-300" />;
+        const XCircle = () => <IconPlaceholder text="[X]" className="text-gray-400" />;
+        const DownloadCloud = () => <IconPlaceholder text="[↓]" />;
+        const AlertTriangle = () => <IconPlaceholder text="[⚠️]" className="text-yellow-400" />;
         const LogInIcon = () => <IconPlaceholder text="[Login]" />;
+        const PieChartIcon = () => <IconPlaceholder text="[📊]" />;
+        const ListIcon = () => <IconPlaceholder text="[☰]" />;
 
 
         const formatCurrency = (amount) => {
@@ -185,11 +229,11 @@
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
                         <h3 className="text-xl font-semibold text-sky-400 mb-4">{title}</h3>
-                        <p className="text-gray-300 mb-6">{message}</p>
+                        <p className="text-slate-300 mb-6">{message}</p>
                         <div className="flex justify-end space-x-3">
-                            <button onClick={onCancel} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium rounded-lg shadow-sm transition-colors">Cancel</button>
+                            <button onClick={onCancel} className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-slate-200 font-medium rounded-lg shadow-sm transition-colors">Cancel</button>
                             <button onClick={onConfirm} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-sm transition-colors">Confirm</button>
                         </div>
                     </div>
@@ -204,47 +248,35 @@
             const [authLoading, setAuthLoading] = useState(false);
 
             const handleSubmit = async (e) => {
-                e.preventDefault();
-                setAuthError('');
-                setAuthLoading(true);
-                if (!auth) {
-                    setAuthError("Firebase Auth not initialized.");
-                    setAuthLoading(false);
-                    return;
-                }
+                e.preventDefault(); setAuthError(''); setAuthLoading(true);
+                if (!auth) { setAuthError("Firebase Auth not initialized."); setAuthLoading(false); return; }
                 try {
                     await auth.signInWithEmailAndPassword(email, password);
-                } catch (err) {
-                    console.error("Login error:", err);
-                    setAuthError(err.message);
-                } finally {
-                    setAuthLoading(false);
-                }
+                } catch (err) { console.error("Login error:", err); setAuthError(err.message);
+                } finally { setAuthLoading(false); }
             };
 
             return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4">
-                    <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-2xl">
-                        <h2 className="text-3xl font-bold text-center text-sky-400">
-                            Login to Portfolio
-                        </h2>
+                <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-4">
+                    <div className="w-full max-w-md p-8 space-y-6 bg-slate-800 rounded-xl shadow-2xl">
+                        <h2 className="text-3xl font-bold text-center text-sky-400">Login to Portfolio</h2>
                         {authError && <p className="text-red-400 bg-red-900/50 p-3 rounded-md text-sm text-center">{authError}</p>}
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email address</label>
+                                <label htmlFor="email" className="block text-sm font-medium text-slate-300">Email address</label>
                                 <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                                    className="mt-1 block w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                    className="mt-1 block w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
                                     placeholder="you@example.com" />
                             </div>
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-300">Password</label>
+                                <label htmlFor="password" className="block text-sm font-medium text-slate-300">Password</label>
                                 <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                                    className="mt-1 block w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                    className="mt-1 block w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
                                     placeholder="••••••••" />
                             </div>
                             <div>
                                 <button type="submit" disabled={authLoading}
-                                    className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                                 >
                                     {authLoading ? <RefreshCw className="animate-spin h-5 w-5 mr-2" /> : <LogInIcon className="h-5 w-5 mr-2" />}
                                     {authLoading ? 'Processing...' : 'Sign In'}
@@ -256,7 +288,7 @@
             );
         };
 
-
+        // --- Main Application Component ---
         function App() {
             const [user, setUserState] = useState(null);
             const [userId, setUserId] = useState(null);
@@ -272,372 +304,221 @@
             const [holdingToDelete, setHoldingToDelete] = useState(null);
             const [lastPriceUpdateAttempt, setLastPriceUpdateAttempt] = useState(null);
             const apiKeyIndexRef = useRef(0);
+            const [currentView, setCurrentView] = useState('portfolio'); 
 
             useEffect(() => {
                 if (!auth) { 
-                    setError("Firebase Auth service is not available. App cannot function.");
-                    setIsAuthReady(true); 
-                    setIsLoading(false); 
-                    return;
+                     setError("Firebase Auth service is not available. App cannot function.");
+                    setIsAuthReady(true); setIsLoading(false); return;
                 }
-
                 let unsubscribeAuthListener;
-
-                const setupAuthListener = () => {
-                    console.log("Setting up onAuthStateChanged listener.");
+                Promise.resolve(firebaseAuthPersistencePromise).finally(() => {
                     unsubscribeAuthListener = auth.onAuthStateChanged(async (currentUser) => {
-                        console.log("onAuthStateChanged fired. User:", currentUser ? currentUser.uid : "null");
                         setUserState(currentUser); 
                         setUserId(currentUser ? currentUser.uid : null);
                         setIsAuthReady(true); 
-                        // isLoading is primarily for data fetching now, or initial auth check
-                        if (!currentUser) {
-                            setIsLoading(false); // No user, so not loading data
-                        }
+                        if (!currentUser) setIsLoading(false); 
                     });
-                };
-                
-                // Wait for persistence to be set (or attempt to be set)
-                // firebaseAuthPersistencePromise is defined globally after Firebase init
-                if (firebaseAuthPersistencePromise) {
-                    firebaseAuthPersistencePromise.finally(() => { 
-                       setupAuthListener();
-                    });
-                } else { // Fallback if promise wasn't set, though it should be
-                    console.warn("firebaseAuthPersistencePromise not found, setting up listener directly.");
-                    setupAuthListener();
-                }
-                
-                return () => {
-                    if (unsubscribeAuthListener) {
-                        console.log("Cleaning up onAuthStateChanged listener.");
-                        unsubscribeAuthListener();
-                    }
-                };
+                });
+                return () => { if (unsubscribeAuthListener) unsubscribeAuthListener(); };
             }, []); 
 
             useEffect(() => {
-                if (!isAuthReady) {
-                    return;
-                }
-
-                if (!userId) { 
-                    setHoldings([]); 
-                    setIsLoading(false); 
-                    return;
-                }
-                
-                if (!db) {
-                     setError("Firestore database service is not available.");
-                     setIsLoading(false);
-                     return;
-                }
-
+                if (!isAuthReady) return; 
+                if (!userId) { setHoldings([]); setIsLoading(false); return; }
+                if (!db) { setError("Firestore database service is not available."); setIsLoading(false); return; }
                 setIsLoading(true); 
                 const holdingsCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`;
                 const q = db.collection(holdingsCollectionPath); 
-                
                 const unsubscribe = q.onSnapshot((querySnapshot) => {
                     const holdingsData = [];
-                    querySnapshot.forEach((doc) => {
-                        holdingsData.push({ id: doc.id, ...doc.data() });
-                    });
+                    querySnapshot.forEach((doc) => holdingsData.push({ id: doc.id, ...doc.data() }));
                     setHoldings(holdingsData);
-                    setIsLoading(false); 
-                    setError(null);
+                    setIsLoading(false); setError(null);
                 }, (err) => {
                     console.error("Error fetching holdings:", err);
-                    setError(`Failed to load portfolio: ${err.message}.`);
-                    setIsLoading(false);
+                    setError(`Failed to load portfolio: ${err.message}.`); setIsLoading(false);
                 });
-
-                return () => {
-                    unsubscribe();
-                };
+                return () => unsubscribe();
             }, [isAuthReady, userId]); 
 
             const handleSaveHolding = async (holdingData) => {
                 if (!db || !userId) { setError("Database not available."); return; }
-                
                 const holdingPayload = {
-                    symbol: holdingData.symbol.toUpperCase().trim(),
-                    name: holdingData.name.trim(),
-                    quantity: parseFloat(holdingData.quantity),
-                    purchasePrice: parseFloat(holdingData.purchasePrice),
+                    symbol: holdingData.symbol.toUpperCase().trim(), name: holdingData.name.trim(),
+                    quantity: parseFloat(holdingData.quantity), purchasePrice: parseFloat(holdingData.purchasePrice),
                 };
-
                 if (editingHolding && holdingData.id) { 
                     try {
-                        const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingData.id);
-                        await holdingDocRef.update({
-                            name: holdingPayload.name, 
-                            quantity: holdingPayload.quantity,
-                            purchasePrice: holdingPayload.purchasePrice,
-                        });
-                        setInfo(`Holding ${holdingPayload.symbol} updated successfully.`);
-                    } catch (updateError) {
-                        console.error("Error updating holding:", updateError);
-                        setError(`Failed to update holding: ${updateError.message}`);
-                    }
+                        const docRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingData.id);
+                        await docRef.update({ name: holdingPayload.name, quantity: holdingPayload.quantity, purchasePrice: holdingPayload.purchasePrice });
+                        setInfo(`Holding ${holdingPayload.symbol} updated.`);
+                    } catch (e) { setError(`Update failed: ${e.message}`); }
                 } else { 
                     try {
-                        const holdingsCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`;
-                        await db.collection(holdingsCollectionPath).add({
-                            ...holdingPayload,
-                            currentPrice: holdingPayload.purchasePrice, 
-                            lastPriceUpdate: null, 
-                            fetchedSymbol: null, 
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-                        });
-                        setInfo(`Holding ${holdingPayload.symbol} added successfully.`);
-                    } catch (addError) {
-                        console.error("Error adding holding:", addError);
-                        setError(`Failed to add holding: ${addError.message}`);
-                    }
+                        const collRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`);
+                        await collRef.add({ ...holdingPayload, currentPrice: holdingPayload.purchasePrice, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                        setInfo(`Holding ${holdingPayload.symbol} added.`);
+                    } catch (e) { setError(`Add failed: ${e.message}`);}
                 }
-                setShowAddForm(false); 
-                setEditingHolding(null); 
+                setShowAddForm(false); setEditingHolding(null); 
             };
 
-            const handleEditHolding = (holdingToEdit) => {
-                setEditingHolding(holdingToEdit);
-                setShowAddForm(true);
-            };
-            
-            const handleCancelEdit = () => {
-                setShowAddForm(false);
-                setEditingHolding(null);
-            };
-
-
-            const requestDeleteHolding = (holdingId) => {
-                setHoldingToDelete(holdingId); setShowDeleteConfirm(true);
-            };
-
+            const handleEditHolding = (h) => { setEditingHolding(h); setShowAddForm(true); };
+            const handleCancelEdit = () => { setShowAddForm(false); setEditingHolding(null); };
+            const requestDeleteHolding = (id) => { setHoldingToDelete(id); setShowDeleteConfirm(true); };
             const confirmDeleteHolding = async () => {
-                if (!db || !userId || !holdingToDelete) {
-                    setError("Database not available or no holding selected.");
-                    setShowDeleteConfirm(false); return;
-                }
+                if (!db || !userId || !holdingToDelete) { setError("Cannot delete."); setShowDeleteConfirm(false); return; }
                 try {
-                    const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingToDelete); 
-                    await holdingDocRef.delete(); 
-                    setError(null);
-                } catch (deleteError) {
-                    console.error("Error deleting holding:", deleteError);
-                    setError(`Failed to delete holding: ${deleteError.message}`);
-                } finally {
-                    setShowDeleteConfirm(false); setHoldingToDelete(null);
-                }
+                    await db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingToDelete).delete();
+                    setInfo("Holding deleted.");
+                } catch (e) { setError(`Delete failed: ${e.message}`); }
+                finally { setShowDeleteConfirm(false); setHoldingToDelete(null); }
             };
             
             const fetchEodPriceForHolding = async (holding, apiKeyToUse) => {
                 const baseSymbol = holding.symbol.toUpperCase();
-                const suffixesToTry = ['.NS', '.BSE']; 
-                let lastFetchError = null;
-
+                const suffixesToTry = ['.NS', '.BSE']; let lastFetchError = null;
                 for (const suffix of suffixesToTry) {
                     const symbolWithExchange = `${baseSymbol}${suffix}`;
                     const url = `${ALPHA_VANTAGE_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${symbolWithExchange}&apikey=${apiKeyToUse}`;
-                    
                     try {
-                        setInfo(`Fetching EOD price for ${symbolWithExchange} (key ${apiKeyIndexRef.current + 1}/${ALPHA_VANTAGE_API_KEYS.length})...`);
-                        const response = await fetch(url);
-                        const responseText = await response.text(); 
-                        
-                        if (!response.ok) {
-                            lastFetchError = new Error(`API req for ${symbolWithExchange} fail (status ${response.status}). Resp: ${responseText.substring(0,100)}`);
-                            console.warn(lastFetchError.message); 
-                            if (response.status === 404) continue; 
-                            continue;
-                        }
-                        
-                        const data = JSON.parse(responseText); 
-
-                        if (data['Error Message']) {
-                            lastFetchError = new Error(`API Error for ${symbolWithExchange}: ${data['Error Message']}`);
-                            console.warn(lastFetchError.message); continue; 
-                        }
-                        if (data['Note']) { 
-                             console.warn(`Alpha Vantage API Note for ${symbolWithExchange}: ${data['Note']}`);
-                             setInfo(`API Note for ${symbolWithExchange}: ${data['Note']}.`);
-                        }
-                         if (data['Information']) { 
-                            lastFetchError = new Error(`API Info for ${symbolWithExchange}: ${data['Information']}`);
-                            console.warn(lastFetchError.message); continue; 
-                        }
-
-                        const timeSeries = data['Time Series (Daily)'];
-                        if (!timeSeries || Object.keys(timeSeries).length === 0) {
-                            lastFetchError = new Error(`No time series for ${symbolWithExchange}. API Resp: ${JSON.stringify(data).substring(0,200)}`);
-                            console.warn(lastFetchError.message); continue; 
-                        }
-                        
-                        const latestDate = Object.keys(timeSeries)[0];
-                        if (!latestDate || !timeSeries[latestDate] || !timeSeries[latestDate]['4. close']) {
-                            lastFetchError = new Error(`Could not parse closing price for ${symbolWithExchange} on ${latestDate}.`);
-                            console.warn(lastFetchError.message); continue; 
-                        }
-                        const latestClosePrice = parseFloat(timeSeries[latestDate]['4. close']);
-
-                        if (isNaN(latestClosePrice)) {
-                             lastFetchError = new Error(`Parsed closing price for ${symbolWithExchange} is not a number.`);
-                             console.warn(lastFetchError.message); continue; 
-                        }
-
-                        const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holding.id);
-                        await holdingDocRef.update({ 
-                            currentPrice: latestClosePrice,
-                            lastPriceUpdate: firebase.firestore.FieldValue.serverTimestamp(),
-                            fetchedSymbol: symbolWithExchange 
-                        });
-                        setInfo(`Updated ${baseSymbol} (as ${symbolWithExchange}) to ${formatCurrency(latestClosePrice)}.`);
-                        return { success: true, symbol: baseSymbol, fetchedSymbol: symbolWithExchange };
-
-                    } catch (fetchError) { 
-                        lastFetchError = fetchError; 
-                        console.error(`Fetch error for ${symbolWithExchange}:`, fetchError);
-                    }
+                        setInfo(`Fetching for ${symbolWithExchange}...`);
+                        const resp = await fetch(url); const txt = await resp.text();
+                        if (!resp.ok) { lastFetchError = new Error(`API req for ${symbolWithExchange} fail (${resp.status}).`); console.warn(lastFetchError.message, txt.substring(0,100)); if (resp.status === 404) continue; continue;}
+                        const data = JSON.parse(txt);
+                        if (data['Error Message']) { lastFetchError = new Error(`API Error for ${symbolWithExchange}: ${data['Error Message']}`); console.warn(lastFetchError.message); continue; }
+                        if (data['Note'] || data['Information']) { console.warn(`API Note/Info for ${symbolWithExchange}: ${data['Note'] || data['Information']}`); setInfo(`API Note for ${symbolWithExchange}: ${data['Note'] || data['Information']}.`);}
+                        const ts = data['Time Series (Daily)'];
+                        if (!ts || Object.keys(ts).length === 0) { lastFetchError = new Error(`No time series for ${symbolWithExchange}.`); console.warn(lastFetchError.message, JSON.stringify(data).substring(0,200)); continue; }
+                        const date = Object.keys(ts)[0];
+                        if (!date || !ts[date] || !ts[date]['4. close']) { lastFetchError = new Error(`Could not parse for ${symbolWithExchange} on ${date}.`); console.warn(lastFetchError.message); continue; }
+                        const price = parseFloat(ts[date]['4. close']);
+                        if (isNaN(price)) { lastFetchError = new Error(`Parsed price for ${symbolWithExchange} is NaN.`); console.warn(lastFetchError.message); continue; }
+                        const docRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holding.id);
+                        await docRef.update({ currentPrice: price, lastPriceUpdate: firebase.firestore.FieldValue.serverTimestamp(), fetchedSymbol: symbolWithExchange });
+                        setInfo(`Updated ${baseSymbol} (${symbolWithExchange}) to ${formatCurrency(price)}.`);
+                        return { success: true, symbol: baseSymbol };
+                    } catch (e) { lastFetchError = e; console.error(`Fetch error for ${symbolWithExchange}:`, e); }
                 }
-                const finalErrorMsg = `All attempts for ${baseSymbol} failed. Last: ${lastFetchError ? lastFetchError.message : 'Unknown fetch error'}.`;
-                console.error(finalErrorMsg);
-                return { success: false, symbol: baseSymbol, error: lastFetchError ? lastFetchError.message : 'Unknown error' };
+                console.error(`All attempts for ${baseSymbol} failed. Last: ${lastFetchError ? lastFetchError.message : 'Unknown'}.`);
+                return { success: false, symbol: baseSymbol, error: lastFetchError ? lastFetchError.message : 'Unknown' };
             };
 
             const handleRefreshAllEodPrices = async () => {
-                if (!db || !userId || holdings.length === 0) {
-                    setInfo("No holdings to refresh or database not available."); return;
-                }
+                if (!db || !userId || holdings.length === 0) { setInfo("No holdings to refresh."); return; }
                 setIsFetchingPrices(true); setError(null); 
-                setInfo(`Starting EOD price refresh for ${holdings.length} holdings...`);
+                setInfo(`Refreshing prices for ${holdings.length} holdings...`);
                 setLastPriceUpdateAttempt(new Date());
-                let successCount = 0, errorCount = 0;
-                let cumulativeErrorMessages = [];
-
-                for (let i = 0; i < holdings.length; i++) {
-                    const holding = holdings[i];
-                    const currentKey = ALPHA_VANTAGE_API_KEYS[apiKeyIndexRef.current];
-                    const result = await fetchEodPriceForHolding(holding, currentKey);
+                let sC=0, eC=0; let errMsgs=[];
+                for (let i=0; i<holdings.length; i++) {
+                    const h=holdings[i]; const key=ALPHA_VANTAGE_API_KEYS[apiKeyIndexRef.current];
+                    const res = await fetchEodPriceForHolding(h, key);
                     apiKeyIndexRef.current = (apiKeyIndexRef.current + 1) % ALPHA_VANTAGE_API_KEYS.length;
-
-                    if (result.success) successCount++;
-                    else {
-                        errorCount++;
-                        if(result.error) cumulativeErrorMessages.push(`${holding.symbol}: ${result.error.substring(0,100)}...`);
-                    }
-                    
-                    if (i < holdings.length - 1) { 
-                        const delay = 10000; 
-                        setInfo(`Waiting ${delay/1000}s... (${i + 1}/${holdings.length} processed)`);
-                        await new Promise(resolve => setTimeout(resolve, delay)); 
-                    }
+                    if (res.success) sC++; else { eC++; if(res.error) errMsgs.push(`${h.symbol}: ${res.error.substring(0,100)}...`);}
+                    if (i<holdings.length-1) { const d=10000; setInfo(`Wait ${d/1000}s... (${i+1}/${holdings.length})`); await new Promise(r => setTimeout(r,d));}
                 }
-                let summaryMessage = `Refresh complete. ${successCount} updated, ${errorCount} failed.`;
-                if (errorCount > 0) {
-                     setError(`${errorCount} stock(s) failed. First error: ${cumulativeErrorMessages[0] || 'N/A'}. See console.`);
-                }
-                setInfo(summaryMessage);
-                setIsFetchingPrices(false);
+                let sumMsg = `Refresh: ${sC} ok, ${eC} fail.`; if (eC>0) setError(`${eC} stock(s) failed. ${errMsgs[0]||''} See console.`);
+                setInfo(sumMsg); setIsFetchingPrices(false);
             };
 
-            const handleLogout = async () => {
-                if (!auth) return;
-                try {
-                    await auth.signOut();
-                } catch (logoutError) {
-                    console.error("Error signing out:", logoutError);
-                    setError(`Logout failed: ${logoutError.message}`);
-                }
-            };
-
+            const handleLogout = async () => { if (!auth) return; try { await auth.signOut(); } catch (e) { setError(`Logout fail: ${e.message}`);}};
             const portfolioSummary = useMemo(() => {
-                let ti = 0, tcv = 0; 
-                holdings.forEach(h => {
-                    ti += (h.quantity || 0) * (h.purchasePrice || 0);
-                    tcv += (h.quantity || 0) * (h.currentPrice || 0);
-                });
-                const tr = tcv - ti;
-                const trp = ti !== 0 ? (tr / ti) * 100 : 0;
-                return { totalInvestment: ti, totalCurrentValue: tcv, totalReturns: tr, totalReturnsPercentage: trp };
+                let ti=0, tcv=0; holdings.forEach(h => { ti+=(h.quantity||0)*(h.purchasePrice||0); tcv+=(h.quantity||0)*(h.currentPrice||0);});
+                const tr=tcv-ti; const trp=ti!==0?(tr/ti)*100:0;
+                return { totalInvestment:ti, totalCurrentValue:tcv, totalReturns:tr, totalReturnsPercentage:trp };
             }, [holdings]);
 
-            // --- Render Logic ---
             if (!isAuthReady || isLoading) {
-                let message = "Initializing...";
-                 if (!isAuthReady) message = "Initializing authentication...";
-                 else if (isLoading && !userId) message = "Authenticating..."; // Auth is ready, but no user yet, still loading
-                 else if (isLoading && userId) message = "Loading portfolio data...";
-                return <LoadingSpinner message={message} />;
+                let msg="Initializing...";
+                if(isAuthReady && isLoading && !userId) msg="Authenticating...";
+                else if(isAuthReady && isLoading && userId) msg="Loading portfolio...";
+                return <LoadingSpinner message={msg} />;
             }
-            
-            if (!auth || !db) { 
-                 return (
-                    <div className="critical-error-message">
-                        <h1>Application Cannot Run</h1>
-                        <p>Firebase services (Authentication or Firestore) are not available. This is likely due to an incorrect Firebase configuration in the HTML script.</p>
-                        <p><strong>Action Required:</strong> Please verify your <code>firebaseConfig</code> object in the script with the values from your Firebase project console.</p>
-                    </div>
-                );
-            }
-            
-            if (!user) { 
-                return <AuthForm />;
-            }
+            if (!auth || !db) return <div className="critical-error-message"><h1>App Error</h1><p>Firebase not available.</p></div>;
+            if (!user) return <AuthForm />;
             
             return (
-                <div className="min-h-screen bg-gradient-to-br from-gray-900 to-slate-800 text-gray-100 p-4 sm:p-6 md:p-8 font-sans">
-                    <ConfirmationModal isOpen={showDeleteConfirm} title="Confirm Deletion" message="Are you sure you want to delete this holding?" onConfirm={confirmDeleteHolding} onCancel={() => { setShowDeleteConfirm(false); setHoldingToDelete(null); }} />
-                    <div className="container mx-auto max-w-6xl">
-                        <header className="mb-8 flex flex-col sm:flex-row justify-between items-center">
-                            <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-600 mb-4 sm:mb-0">My Share Portfolio</h1>
-                            <div className="flex items-center space-x-3">
-                                {user && <span className="text-xs px-3 py-1 bg-gray-700 rounded-full shadow">User: <span className="font-mono">{user.email || userId.substring(0,12) + '...'}</span></span>}
-                                <button onClick={handleLogout} className="p-2 bg-red-600 hover:bg-red-700 rounded-full shadow-md" title="Logout"><LogOut /></button>
+                <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 p-4 sm:p-6 md:p-8 font-['Inter',_sans-serif]">
+                    <ConfirmationModal isOpen={showDeleteConfirm} title="Confirm Deletion" message="Are you sure?" onConfirm={confirmDeleteHolding} onCancel={() => { setShowDeleteConfirm(false); setHoldingToDelete(null); }} />
+                    <div className="container mx-auto max-w-7xl"> 
+                        <header className="mb-8 flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-slate-700">
+                            <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400 mb-4 sm:mb-0">
+                                Share Portfolio Tracker
+                            </h1>
+                            <div className="flex items-center space-x-4">
+                                {user && <span className="text-sm px-4 py-2 bg-slate-700 rounded-full shadow-md">Logged in as: <span className="font-semibold text-sky-300">{user.email || userId.substring(0,12) + '...'}</span></span>}
+                                <button 
+                                    onClick={handleLogout} 
+                                    className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg transition-all duration-150 ease-in-out transform hover:scale-105" 
+                                    title="Logout">
+                                    <LogOut />
+                                </button>
                             </div>
                         </header>
+
+                        <div className="mb-8 flex justify-center sm:justify-start space-x-2 border-b border-slate-700 pb-3">
+                            <button 
+                                onClick={() => setCurrentView('portfolio')} 
+                                className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-150 ease-in-out
+                                            ${currentView === 'portfolio' 
+                                                ? 'bg-sky-500 text-white shadow-lg ring-2 ring-sky-400 ring-offset-2 ring-offset-slate-900' 
+                                                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}> 
+                                <ListIcon /> <span>Portfolio</span>
+                            </button>
+                            <button 
+                                onClick={() => setCurrentView('dashboard')} 
+                                className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-150 ease-in-out
+                                            ${currentView === 'dashboard' 
+                                                ? 'bg-sky-500 text-white shadow-lg ring-2 ring-sky-400 ring-offset-2 ring-offset-slate-900' 
+                                                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}> 
+                                <PieChartIcon /> <span>Dashboard</span>
+                            </button>
+                        </div>
 
                         {error && <ErrorMessage message={error} onClose={() => setError(null)} />}
                         {info && <InfoMessage message={info} onClose={() => setInfo(null)} />}
                         
-                        <div className="my-2 p-3 bg-yellow-900/70 border border-yellow-700 rounded-lg text-yellow-200 text-sm flex items-center">
-                            <AlertTriangle className="mr-2 shrink-0 h-5 w-5"/>
-                            <span>
-                                Prices are EOD from Alpha Vantage. {ALPHA_VANTAGE_API_KEYS.length} API keys used. Updates manual & rate-limited. App attempts `SYMBOL.NS` then `SYMBOL.BSE`.
-                                {lastPriceUpdateAttempt && ` Last refresh: ${formatDate(lastPriceUpdateAttempt)}.`}
-                            </span>
-                        </div>
-
-                        <PortfolioSummaryCards summary={portfolioSummary} />
-
-                        <div className="my-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-                             <button 
-                                onClick={() => { setShowAddForm(true); setEditingHolding(null); }} 
-                                className="flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md">
-                                <PlusCircle className="mr-2 h-5 w-5" /> Add New Holding
-                            </button>
-                            <button onClick={handleRefreshAllEodPrices} disabled={isFetchingPrices || holdings.length === 0} className="flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isFetchingPrices ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <DownloadCloud className="mr-2 h-5 w-5" />}
-                                {isFetchingPrices ? 'Fetching Prices...' : 'Refresh Daily Prices'}
-                            </button>
-                        </div>
-
-                        {showAddForm && <AddHoldingForm 
-                                            onSubmit={handleSaveHolding} 
-                                            onCancel={handleCancelEdit} 
-                                            initialData={editingHolding} 
-                                        />}
-                        
-                        {!isLoading && !holdings.length && !showAddForm && userId && ( 
-                             <div className="mt-10 text-center p-8 bg-gray-800 rounded-xl shadow-xl">
-                                <Briefcase className="mx-auto h-16 w-16 text-sky-400 mb-6" />
-                                <h2 className="text-2xl font-semibold text-gray-300 mb-3">Your Portfolio is Empty</h2>
-                                <p className="text-gray-400 mb-6">Click "Add New Holding" to start tracking investments.</p>
+                        {currentView === 'portfolio' && (
+                            <div className="animate-fadeIn">
+                                <div className="my-4 p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-300 text-sm flex items-center space-x-3 shadow">
+                                    <AlertTriangle className="text-yellow-400 h-6 w-6 shrink-0"/>
+                                    <p>
+                                        Prices are EOD from Alpha Vantage. 
+                                        <span className="font-semibold">{ALPHA_VANTAGE_API_KEYS.length} API key(s)</span> are used in rotation. Updates are manual and rate-limited. App attempts `SYMBOL.NS` then `SYMBOL.BSE`.
+                                        {lastPriceUpdateAttempt && <span className="block mt-1">Last price refresh attempt: {formatDate(lastPriceUpdateAttempt)}.</span>}
+                                    </p>
+                                </div>
+                                <PortfolioSummaryCards summary={portfolioSummary} />
+                                <div className="my-8 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                                     <button 
+                                        onClick={() => { setShowAddForm(true); setEditingHolding(null); }} 
+                                        className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out transform hover:scale-105"> 
+                                        <PlusCircle className="mr-2 h-5 w-5" /> Add New Holding 
+                                    </button>
+                                    <button 
+                                        onClick={handleRefreshAllEodPrices} 
+                                        disabled={isFetchingPrices || holdings.length === 0} 
+                                        className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed">
+                                        {isFetchingPrices ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <DownloadCloud className="mr-2 h-5 w-5" />}
+                                        {isFetchingPrices ? 'Fetching Prices...' : 'Refresh All Prices'}
+                                    </button>
+                                </div>
+                                {showAddForm && <AddHoldingForm onSubmit={handleSaveHolding} onCancel={handleCancelEdit} initialData={editingHolding} />}
+                                {!isLoading && !holdings.length && !showAddForm && userId && ( 
+                                     <div className="mt-12 text-center p-10 bg-slate-800 rounded-xl shadow-xl border border-slate-700 animate-pulseSlow"> 
+                                        <Briefcase className="mx-auto h-20 w-20 text-sky-500 mb-6" /> 
+                                        <h2 className="text-3xl font-semibold text-slate-200 mb-4">Your Portfolio is Empty</h2> 
+                                        <p className="text-slate-400 mb-8 text-lg">Click "Add New Holding" to start tracking your investments.</p> 
+                                    </div>
+                                )}
+                                {holdings.length > 0 && <HoldingsTable holdings={holdings} onDelete={requestDeleteHolding} onEdit={handleEditHolding} />}
                             </div>
                         )}
-                        {holdings.length > 0 && <HoldingsTable holdings={holdings} onDelete={requestDeleteHolding} onEdit={handleEditHolding} />}
+                        {currentView === 'dashboard' && <DashboardView holdings={holdings} portfolioSummary={portfolioSummary} />}
                         
-                        <footer className="mt-12 text-center text-sm text-gray-500">
-                            <p>&copy; {new Date().getFullYear()} Share Portfolio Tracker. App ID: <span className="font-mono">{FIRESTORE_APP_ID_NAMESPACE}</span></p>
+                        <footer className="mt-16 pt-8 border-t border-slate-700 text-center text-sm text-slate-500">
+                            <p>&copy; {new Date().getFullYear()} Portfolio Tracker. Namespace: <span className="font-mono">{FIRESTORE_APP_ID_NAMESPACE}</span></p>
                         </footer>
                     </div>
                 </div>
@@ -648,169 +529,172 @@
             const { totalInvestment, totalCurrentValue, totalReturns, totalReturnsPercentage } = summary;
             const isProfit = totalReturns >= 0;
             return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                    <SummaryCard title="Total Investment" value={formatCurrency(totalInvestment)} icon={<DollarSign className="text-blue-400 h-5 w-5" />} />
-                    <SummaryCard title="Current Value (EOD)" value={formatCurrency(totalCurrentValue)} icon={<Briefcase className="text-green-400 h-5 w-5" />} />
-                    <SummaryCard title="Total P/L" value={formatCurrency(totalReturns)} icon={isProfit ? <TrendingUp className="text-emerald-400 h-5 w-5" /> : <TrendingDown className="text-red-400 h-5 w-5" />} valueColor={isProfit ? "text-emerald-400" : "text-red-400"} />
-                    <SummaryCard title="Total P/L %" value={formatPercentage(totalReturnsPercentage)} icon={isProfit ? <TrendingUp className="text-emerald-400 h-5 w-5" /> : <TrendingDown className="text-red-400 h-5 w-5" />} valueColor={isProfit ? "text-emerald-400" : "text-red-400"} />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 mb-8">
+                    <SummaryCard title="Total Investment" value={formatCurrency(totalInvestment)} icon={<DollarSign className="text-blue-400 h-6 w-6" />} />
+                    <SummaryCard title="Current Value (EOD)" value={formatCurrency(totalCurrentValue)} icon={<Briefcase className="text-green-400 h-6 w-6" />} />
+                    <SummaryCard title="Total P/L" value={formatCurrency(totalReturns)} icon={isProfit ? <TrendingUp className="text-emerald-400 h-6 w-6" /> : <TrendingDown className="text-red-400 h-6 w-6" />} valueColor={isProfit ? "text-emerald-400" : "text-red-400"} />
+                    <SummaryCard title="Total P/L %" value={formatPercentage(totalReturnsPercentage)} icon={isProfit ? <TrendingUp className="text-emerald-400 h-6 w-6" /> : <TrendingDown className="text-red-400 h-6 w-6" />} valueColor={isProfit ? "text-emerald-400" : "text-red-400"} />
                 </div>
             );
         };
-
-        const SummaryCard = ({ title, value, icon, valueColor = "text-gray-100" }) => ( 
-            <div className="bg-gray-800 p-5 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium text-gray-400">{title}</h3>
-                    {icon && React.isValidElement(icon) && <div className="p-2 bg-gray-700 rounded-full">{React.cloneElement(icon)}</div>} 
-                </div>
-                <p className={`text-2xl font-semibold ${valueColor}`}>{value}</p>
+        const SummaryCard = ({ title, value, icon, valueColor = "text-slate-100" }) => ( 
+            <div className="bg-slate-800 p-6 rounded-xl shadow-lg hover:shadow-sky-500/30 transition-all duration-300 ease-in-out transform hover:-translate-y-1 border border-slate-700">
+                <div className="flex items-center justify-between mb-3"> <h3 className="text-base font-medium text-slate-400">{title}</h3> {icon && React.isValidElement(icon) && <div className="p-2.5 bg-slate-700 rounded-full">{React.cloneElement(icon)}</div>} </div>
+                <p className={`text-3xl font-bold ${valueColor}`}>{value}</p>
             </div>
         );
-
         const AddHoldingForm = ({ onSubmit, onCancel, initialData }) => { 
-            const [symbol, setSymbol] = useState('');
-            const [name, setName] = useState('');
-            const [quantity, setQuantity] = useState('');
-            const [purchasePrice, setPurchasePrice] = useState('');
-            const [formError, setFormError] = useState('');
-
-            const isEditMode = Boolean(initialData);
-
+            const [symbol, setSymbol] = useState(''); const [name, setName] = useState('');
+            const [quantity, setQuantity] = useState(''); const [purchasePrice, setPurchasePrice] = useState('');
+            const [formError, setFormError] = useState(''); const isEditMode = Boolean(initialData);
             useEffect(() => {
                 if (isEditMode && initialData) {
-                    setSymbol(initialData.symbol || '');
-                    setName(initialData.name || '');
+                    setSymbol(initialData.symbol || ''); setName(initialData.name || '');
                     setQuantity(initialData.quantity !== undefined ? String(initialData.quantity) : '');
                     setPurchasePrice(initialData.purchasePrice !== undefined ? String(initialData.purchasePrice) : '');
-                } else {
-                    setSymbol(''); setName(''); setQuantity(''); setPurchasePrice('');
-                }
+                } else { setSymbol(''); setName(''); setQuantity(''); setPurchasePrice(''); }
             }, [initialData, isEditMode]);
-
-
             const handleSubmit = (e) => {
                 e.preventDefault(); setFormError('');
-                if (!symbol.trim() || !name.trim() || !quantity || !purchasePrice) { setFormError('All fields are required.'); return; }
-                const numQuantity = parseFloat(quantity); const numPurchasePrice = parseFloat(purchasePrice);
-                if (isNaN(numQuantity) || numQuantity <= 0) { setFormError('Quantity must be > 0.'); return; }
-                if (isNaN(numPurchasePrice) || numPurchasePrice <= 0) { setFormError('Purchase price must be > 0.'); return; }
-                
-                onSubmit({ 
-                    id: isEditMode ? initialData.id : undefined, 
-                    symbol: symbol, 
-                    name: name, 
-                    quantity: numQuantity, 
-                    purchasePrice: numPurchasePrice 
-                });
+                if (!symbol.trim()||!name.trim()||!quantity||!purchasePrice) { setFormError('All fields are required.'); return; }
+                const nQ=parseFloat(quantity); const nPP=parseFloat(purchasePrice);
+                if (isNaN(nQ)||nQ<=0) { setFormError('Quantity must be > 0.'); return; }
+                if (isNaN(nPP)||nPP<=0) { setFormError('Purchase price must be > 0.'); return; }
+                onSubmit({ id:isEditMode?initialData.id:undefined, symbol, name, quantity:nQ, purchasePrice:nPP });
             };
-            return (
-                <div className="my-6 p-6 bg-gray-800 rounded-xl shadow-xl">
-                    <h2 className="text-xl font-semibold mb-6 text-sky-400">{isEditMode ? 'Edit Holding' : 'Add New Stock Holding'}</h2>
-                    {formError && <p className="text-red-400 bg-red-900/50 p-3 rounded-md mb-4 text-sm">{formError}</p>}
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="symbol" className="block text-sm font-medium text-gray-300 mb-1">Stock Symbol</label>
-                                <input type="text" id="symbol" value={symbol} 
-                                       readOnly={isEditMode} 
-                                       onChange={(e) => !isEditMode && setSymbol(e.target.value)} 
-                                       required 
-                                       className={`w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none ${isEditMode ? 'cursor-not-allowed opacity-70' : ''}`} />
-                            </div>
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Stock Name</label>
-                                <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-                            </div>
-                            <div>
-                                <label htmlFor="quantity" className="block text-sm font-medium text-gray-300 mb-1">Quantity</label>
-                                <input type="number" id="quantity" value={quantity} onChange={(e) => setQuantity(e.target.value)} required min="0.0001" step="any" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-                            </div>
-                            <div>
-                                <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-300 mb-1">Purchase Price (per share)</label>
-                                <input type="number" id="purchasePrice" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} required min="0.01" step="any" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-                            </div>
-                        </div>
-                        <div className="flex justify-end space-x-3 pt-2">
-                            <button type="button" onClick={onCancel} className="px-5 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium rounded-lg shadow-sm">Cancel</button>
-                            <button type="submit" className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-sm">
-                                {isEditMode ? 'Update Holding' : 'Add Holding'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            );
+            return ( <div className="my-8 p-6 sm:p-8 bg-slate-800 rounded-xl shadow-2xl border border-slate-700"> <h2 className="text-2xl font-semibold mb-6 text-sky-400">{isEditMode ? 'Edit Holding' : 'Add New Stock Holding'}</h2> {formError && <p className="text-red-400 bg-red-900/50 p-3 rounded-md mb-4 text-sm">{formError}</p>} <form onSubmit={handleSubmit} className="space-y-5"> <div className="grid grid-cols-1 md:grid-cols-2 gap-5"> <div> <label htmlFor="symbol" className="block text-sm font-medium text-slate-300 mb-1">Stock Symbol</label> <input type="text" id="symbol" value={symbol} readOnly={isEditMode} onChange={(e)=>!isEditMode&&setSymbol(e.target.value)} required className={`w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg outline-none ${isEditMode ? 'cursor-not-allowed opacity-70' : 'focus:ring-2 focus:ring-sky-500'}`} /> </div><div> <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-1">Stock Name</label> <input type="text" id="name" value={name} onChange={(e)=>setName(e.target.value)} required className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" /> </div><div> <label htmlFor="quantity" className="block text-sm font-medium text-slate-300 mb-1">Quantity</label> <input type="number" id="quantity" value={quantity} onChange={(e)=>setQuantity(e.target.value)} required min="0.0001" step="any" className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" /> </div><div> <label htmlFor="purchasePrice" className="block text-sm font-medium text-slate-300 mb-1">Purchase Price</label> <input type="number" id="purchasePrice" value={purchasePrice} onChange={(e)=>setPurchasePrice(e.target.value)} required min="0.01" step="any" className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" /> </div></div><div className="flex justify-end space-x-4 pt-3"> <button type="button" onClick={onCancel} className="px-6 py-2.5 bg-slate-600 hover:bg-slate-500 text-slate-200 font-medium rounded-lg shadow-sm transition-colors">Cancel</button> <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg shadow-sm transition-colors">{isEditMode ? 'Update Holding' : 'Add Holding'}</button> </div></form> </div> );
         };
-
         const HoldingsTable = ({ holdings, onDelete, onEdit }) => { 
             if (!holdings || holdings.length === 0) return null;
+            return ( <div className="mt-8 bg-slate-800 shadow-xl rounded-xl overflow-hidden border border-slate-700"> <div className="overflow-x-auto"> <table className="w-full min-w-max text-sm text-left text-slate-300"><thead className="text-xs text-sky-300 uppercase bg-slate-700/50"><tr>
+                {['Symbol', 'Fetched As', 'Name', 'Qty', 'Buy Price', 'EOD Price', 'Last Update', 'Investment', 'Current Value', 'P/L', 'P/L %', 'Actions'].map(header => ( <th key={header} scope="col" className="px-5 py-4 whitespace-nowrap font-semibold tracking-wider">{header}</th> ))}
+            </tr></thead><tbody className="divide-y divide-slate-700">
+                {holdings.map((h) => { const qty = h.quantity||0, pp=h.purchasePrice||0, cp=h.currentPrice||0; const invVal=qty*pp, currVal=qty*cp; const pl=currVal-invVal; const plp=invVal!==0?(pl/invVal)*100:0; const isProfit = pl >= 0; return ( <tr key={h.id} className="hover:bg-slate-700/70 transition-colors duration-150"> <td className="px-5 py-4 font-medium text-sky-400">{h.symbol}</td> <td className="px-5 py-4 text-xs text-slate-400">{h.fetchedSymbol||'N/A'}</td> <td className="px-5 py-4">{h.name}</td> <td className="px-5 py-4 text-right">{qty.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:4})}</td> <td className="px-5 py-4 text-right">{formatCurrency(pp)}</td> <td className="px-5 py-4 text-right font-semibold">{formatCurrency(cp)}</td> <td className="px-5 py-4 text-xs">{h.lastPriceUpdate?formatDate(h.lastPriceUpdate):'N/A'}</td> <td className="px-5 py-4 text-right">{formatCurrency(invVal)}</td> <td className="px-5 py-4 text-right font-semibold">{formatCurrency(currVal)}</td> <td className={`px-5 py-4 text-right font-semibold ${isProfit?'text-emerald-400':'text-red-400'}`}>{formatCurrency(pl)}</td> <td className={`px-5 py-4 text-right font-semibold ${isProfit?'text-emerald-400':'text-red-400'}`}>{formatPercentage(plp)}</td> <td className="px-5 py-4 text-center space-x-2"> <button onClick={()=>onEdit(h)} title="Edit" className="p-2 text-blue-400 hover:text-blue-300 hover:bg-slate-700 rounded-full transition-colors"><Edit3 className="h-5 w-5"/></button> <button onClick={()=>onDelete(h.id)} title="Delete" className="p-2 text-red-500 hover:text-red-400 hover:bg-slate-700 rounded-full transition-colors"><Trash2 className="h-5 w-5"/></button> </td> </tr> ); })}
+            </tbody></table> </div> </div> );
+        };
+        const LoadingSpinner = ({ message="Loading..." }) => ( <div className="flex flex-col items-center justify-center text-center p-10 bg-slate-800 rounded-xl shadow-lg my-8"> <svg className="animate-spin h-12 w-12 text-sky-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <p className="text-lg font-medium text-slate-300">{message}</p> </div> );
+        const ErrorMessage = ({ message, onClose }) => ( <div className="bg-red-700/80 border border-red-600 text-red-100 px-4 py-3 rounded-lg relative mb-6 shadow-lg backdrop-blur-sm"> <div className="flex items-center"><XCircle className="h-5 w-5 mr-3 text-red-300 shrink-0"/><div><strong className="font-semibold">Error: </strong><span className="block sm:inline">{message}</span></div></div> <button onClick={onClose} className="absolute top-2.5 right-2.5 p-1 text-red-300 hover:text-red-100 transition-colors" title="Close"><XCircle className="h-5 w-5"/></button> </div> );
+        const InfoMessage = ({ message, onClose }) => ( <div className="bg-sky-700/80 border border-sky-600 text-sky-100 px-4 py-3 rounded-lg relative mb-6 shadow-lg backdrop-blur-sm"> <div className="flex items-center"><Info className="h-5 w-5 mr-3 text-sky-300 shrink-0"/><div><strong className="font-semibold">Info: </strong><span className="block sm:inline">{message}</span></div></div> <button onClick={onClose} className="absolute top-2.5 right-2.5 p-1 text-sky-300 hover:text-sky-100 transition-colors" title="Close"><XCircle className="h-5 w-5"/></button> </div> );
+
+        // --- Dashboard Component ---
+        const DashboardView = ({ holdings, portfolioSummary }) => {
+            if (!holdings || holdings.length === 0) {
+                return <div className="mt-10 text-center p-10 bg-slate-800 rounded-xl shadow-xl border border-slate-700"><Briefcase className="mx-auto h-20 w-20 text-sky-500 mb-6" /><h2 className="text-3xl font-semibold text-slate-200 mb-4">Dashboard is Empty</h2><p className="text-slate-400 text-lg">Add some holdings to see your portfolio statistics and charts.</p></div>;
+            }
+
+            const processedHoldings = holdings.map(h => {
+                const investment = (h.quantity || 0) * (h.purchasePrice || 0);
+                const currentValue = (h.quantity || 0) * (h.currentPrice || 0);
+                const pnl = currentValue - investment;
+                return { ...h, investment, currentValue, pnl };
+            });
+
+            const bestPerformer = processedHoldings.length > 0 ? processedHoldings.reduce((best, current) => (current.pnl > best.pnl ? current : best), processedHoldings[0]) : {pnl: 0, symbol: 'N/A'};
+            const worstPerformer = processedHoldings.length > 0 ? processedHoldings.reduce((worst, current) => (current.pnl < worst.pnl ? current : worst), processedHoldings[0]) : {pnl: 0, symbol: 'N/A'};
+            
+            const totalInvestmentForChart = portfolioSummary.totalInvestment;
+            const pieData = holdings.map(h => ({
+                name: h.symbol,
+                value: (h.quantity || 0) * (h.purchasePrice || 0),
+                percentage: totalInvestmentForChart > 0 ? (((h.quantity || 0) * (h.purchasePrice || 0)) / totalInvestmentForChart) * 100 : 0
+            })).filter(item => item.value > 0).sort((a,b) => b.value - a.value); 
+
+
+            const SvgPieChart = ({ data, size = 250 }) => {
+                const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
+
+                if (!data || data.length === 0) return <p className="text-center text-slate-400 py-8">Not enough data for chart.</p>;
+                const radius = size / 2.8; 
+                const cx = size / 2;
+                const cy = size / 2;
+                let accumulatedAngle = -Math.PI / 2; 
+
+                const colors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4'];
+
+                const handleMouseOver = (e, slice) => {
+                    setTooltip({
+                        visible: true,
+                        content: `${slice.name}: ${slice.percentage.toFixed(1)}% (${formatCurrency(slice.value)})`,
+                        x: e.clientX,
+                        y: e.clientY
+                    });
+                };
+                const handleMouseOut = () => {
+                    setTooltip({ visible: false, content: '', x: 0, y: 0 });
+                };
+
+
+                return (
+                    <div className="pie-chart-container my-6 relative">
+                        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                            {data.map((slice, index) => {
+                                const angle = (slice.percentage / 100) * 2 * Math.PI;
+                                const x1 = cx + radius * Math.cos(accumulatedAngle);
+                                const y1 = cy + radius * Math.sin(accumulatedAngle);
+                                accumulatedAngle += angle;
+                                const x2 = cx + radius * Math.cos(accumulatedAngle);
+                                const y2 = cy + radius * Math.sin(accumulatedAngle);
+                                const largeArcFlag = angle > Math.PI ? 1 : 0;
+                                const pathData = `M ${cx},${cy} L ${x1},${y1} A ${radius},${radius} 0 ${largeArcFlag} 1 ${x2},${y2} Z`;
+                                
+                                return (
+                                    <path 
+                                        key={slice.name} 
+                                        d={pathData} 
+                                        fill={colors[index % colors.length]} 
+                                        className="pie-chart-slice"
+                                        onMouseOver={(e) => handleMouseOver(e, slice)}
+                                        onMouseOut={handleMouseOut}
+                                    />
+                                );
+                            })}
+                        </svg>
+                        {tooltip.visible && (
+                            <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y, opacity: 1, transform: `translate(${tooltip.x > window.innerWidth / 2 ? '-110%' : '10%'}, -120%)` }}>
+                                {tooltip.content}
+                            </div>
+                        )}
+                         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
+                            {data.map((slice, index) => (
+                                <div key={slice.name} className="flex items-center text-sm">
+                                    <span className="inline-block w-3 h-3 mr-2 rounded-sm" style={{ backgroundColor: colors[index % colors.length] }}></span>
+                                    <span className="text-slate-300">{slice.name}: <span className="font-medium text-slate-100">{slice.percentage.toFixed(1)}%</span></span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+
             return (
-                <div className="mt-8 bg-gray-800 shadow-xl rounded-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-max text-sm text-left text-gray-300">
-                            <thead className="text-xs text-sky-300 uppercase bg-gray-700/50">
-                                <tr>
-                                    {['Symbol', 'Fetched As', 'Name', 'Qty', 'Buy Price', 'EOD Price', 'Last Update', 'Investment', 'Current Value', 'P/L', 'P/L %', 'Actions'].map(header => (
-                                        <th key={header} scope="col" className="px-5 py-4 whitespace-nowrap">{header}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-700">
-                                {holdings.map((h) => {
-                                    const qty = h.quantity || 0, pp = h.purchasePrice || 0, cp = h.currentPrice || 0;
-                                    const invVal = qty * pp, currVal = qty * cp;
-                                    const pl = currVal - invVal;
-                                    const plp = invVal !== 0 ? (pl / invVal) * 100 : 0;
-                                    const isProfit = pl >= 0;
-                                    return (
-                                        <tr key={h.id} className="hover:bg-gray-700/70 transition-colors">
-                                            <td className="px-5 py-4 font-medium text-sky-400 whitespace-nowrap">{h.symbol}</td>
-                                            <td className="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">{h.fetchedSymbol || 'N/A'}</td>
-                                            <td className="px-5 py-4 whitespace-nowrap">{h.name}</td>
-                                            <td className="px-5 py-4 text-right">{qty.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:4})}</td>
-                                            <td className="px-5 py-4 text-right">{formatCurrency(pp)}</td>
-                                            <td className="px-5 py-4 text-right font-semibold">{formatCurrency(cp)}</td>
-                                            <td className="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">{h.lastPriceUpdate ? formatDate(h.lastPriceUpdate) : 'N/A'}</td>
-                                            <td className="px-5 py-4 text-right">{formatCurrency(invVal)}</td>
-                                            <td className="px-5 py-4 text-right font-semibold">{formatCurrency(currVal)}</td>
-                                            <td className={`px-5 py-4 text-right font-semibold ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(pl)}</td>
-                                            <td className={`px-5 py-4 text-right font-semibold ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>{formatPercentage(plp)}</td>
-                                            <td className="px-5 py-4 text-center space-x-2">
-                                                <button onClick={() => onEdit(h)} title="Edit Holding" className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/50 rounded-full"><Edit3 className="h-5 w-5" /></button>
-                                                <button onClick={() => onDelete(h.id)} title="Delete Holding" className="p-2 text-red-500 hover:text-red-400 hover:bg-red-900/50 rounded-full"><Trash2 className="h-5 w-5" /></button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                <div className="space-y-8 animate-fadeIn">
+                    <h2 className="text-3xl font-semibold text-sky-400 border-b border-slate-700 pb-3">Portfolio Dashboard</h2>
+                    
+                    <div className="bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-700">
+                        <h3 className="text-xl font-semibold text-slate-200 mb-4">Overall Performance</h3>
+                        <PortfolioSummaryCards summary={portfolioSummary} />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-700">
+                            <h3 className="text-xl font-semibold text-slate-200 mb-4">Key Statistics</h3>
+                            <div className="space-y-3 text-slate-300">
+                                <p>Total Holdings: <span className="font-semibold text-sky-400 text-lg">{holdings.length}</span> unique stocks</p>
+                                {bestPerformer.symbol !== 'N/A' && <p>Best Performer (P/L): <span className="font-semibold text-green-400">{bestPerformer.symbol} ({formatCurrency(bestPerformer.pnl)})</span></p>}
+                                {worstPerformer.symbol !== 'N/A' && <p>Worst Performer (P/L): <span className="font-semibold text-red-400">{worstPerformer.symbol} ({formatCurrency(worstPerformer.pnl)})</span></p>}
+                            </div>
+                        </div>
+                        <div className="bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-700">
+                            <h3 className="text-xl font-semibold text-slate-200 mb-2">Investment Distribution</h3>
+                            <p className="text-sm text-slate-400 mb-4">Allocation of total investment by stock.</p>
+                            <SvgPieChart data={pieData} />
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        const LoadingSpinner = ({ message = "Loading..." }) => ( 
-            <div className="flex flex-col items-center justify-center text-center p-10 bg-gray-800 rounded-xl shadow-lg my-8">
-                <svg className="animate-spin h-12 w-12 text-sky-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <p className="text-lg font-medium text-gray-300">{message}</p>
-            </div>
-        );
-
-        const ErrorMessage = ({ message, onClose }) => { 
-            return ( 
-                <div className="bg-red-800 border border-red-600 text-red-100 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
-                    <div className="flex items-center"><XCircle className="h-5 w-5 mr-2 text-red-300" /><div><strong className="font-bold">Error: </strong><span className="block sm:inline">{message}</span></div></div>
-                    <button onClick={onClose} className="absolute top-0 bottom-0 right-0 px-4 py-3" title="Close"><XCircle className="h-5 w-5 text-red-300 hover:text-red-100" /></button>
-                </div>
-            );
-        };
-        
-        const InfoMessage = ({ message, onClose }) => { 
-            return (
-            <div className="bg-blue-800 border border-blue-600 text-blue-100 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="status">
-                <div className="flex items-center"><Info className="h-5 w-5 mr-2 text-blue-300" /><div><strong className="font-bold">Info: </strong><span className="block sm:inline">{message}</span></div></div>
-                <button onClick={onClose} className="absolute top-0 bottom-0 right-0 px-4 py-3" title="Close"><XCircle className="h-5 w-5 text-blue-300 hover:text-blue-100" /></button>
-            </div>
-        )};
 
         const root = ReactDOM.createRoot(document.getElementById('root')); 
         root.render(<App />);
