@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Share Portfolio Tracker</title>
-    <script src="https://cdn.tailwindcss.com"></script> 
+    <script src="https://cdn.tailwindcss.com"></script> {/* Loads synchronously for styling */}
     <script src="https://unpkg.com/react@18/umd/react.development.js" defer></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" defer></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js" defer></script>
@@ -101,6 +101,7 @@
         let app;
         let auth;
         let db;
+        let firebaseAuthPersistencePromise; // To manage persistence setting
 
         try {
             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_") || 
@@ -115,6 +116,18 @@
             }
             auth = firebase.auth();
             db = firebase.firestore();
+
+            // Explicitly set persistence to LOCAL
+            firebaseAuthPersistencePromise = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    console.log("Firebase auth persistence set to LOCAL.");
+                })
+                .catch((error) => {
+                    console.error("Error setting Firebase auth persistence:", error);
+                    // This error might not be fatal for app functionality if default persistence works,
+                    // but it's important to log.
+                });
+
         } catch (error) {
             console.error("CRITICAL: Error initializing Firebase:", error);
             const rootDiv = document.getElementById('root');
@@ -187,7 +200,6 @@
             );
         };
 
-        // Authentication Form Component (Login Only)
         const AuthForm = ({ onAuthSuccess }) => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
@@ -205,7 +217,6 @@
                 }
                 try {
                     await auth.signInWithEmailAndPassword(email, password);
-                    // onAuthStateChanged will handle setting the user state in App component
                 } catch (err) {
                     console.error("Login error:", err);
                     setAuthError(err.message);
@@ -243,7 +254,6 @@
                                 </button>
                             </div>
                         </form>
-                        {/* Removed the toggle to register new users */}
                     </div>
                 </div>
             );
@@ -273,16 +283,41 @@
                     setIsLoading(false); 
                     return;
                 }
-                const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-                    setUserState(currentUser); 
-                    setUserId(currentUser ? currentUser.uid : null);
-                    setIsAuthReady(true); 
-                    if (!currentUser) { 
-                        setHoldings([]); 
-                        setIsLoading(false);
-                    }
-                });
-                return () => unsubscribe();
+
+                // Ensure persistence is attempted before setting up onAuthStateChanged
+                const setupAuthListener = () => {
+                    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+                        setUserState(currentUser); 
+                        setUserId(currentUser ? currentUser.uid : null);
+                        setIsAuthReady(true); 
+                        if (!currentUser && !auth.currentUser) { // Check if truly no user after persistence attempt
+                            // If anonymous sign-in is desired as a fallback (not for email/pass only)
+                            // try {
+                            //     await auth.signInAnonymously();
+                            // } catch (authError) {
+                            //     console.error("Error during anonymous sign-in:", authError);
+                            //     setError(`Anonymous authentication failed: ${authError.message}.`);
+                            //     setIsLoading(false); 
+                            // }
+                            setIsLoading(false); // No user, stop loading
+                        }
+                        // If currentUser exists, data loading will be handled by the next useEffect
+                    });
+                    return unsubscribe;
+                };
+
+                let unsubscribeAuth;
+                if (firebaseAuthPersistencePromise) {
+                    firebaseAuthPersistencePromise.finally(() => { // Run after persistence attempt, regardless of outcome
+                       unsubscribeAuth = setupAuthListener();
+                    });
+                } else { // Should not happen if Firebase init was successful
+                    unsubscribeAuth = setupAuthListener();
+                }
+                
+                return () => {
+                    if (unsubscribeAuth) unsubscribeAuth();
+                };
             }, []); 
 
             useEffect(() => {
@@ -334,10 +369,9 @@
                     try {
                         const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingData.id);
                         await holdingDocRef.update({
-                            name: holdingPayload.name, // Symbol is not updated
+                            name: holdingPayload.name, 
                             quantity: holdingPayload.quantity,
                             purchasePrice: holdingPayload.purchasePrice,
-                            // Keep existing currentPrice, lastPriceUpdate, fetchedSymbol unless updated by price fetch
                         });
                         setInfo(`Holding ${holdingPayload.symbol} updated successfully.`);
                     } catch (updateError) {
@@ -406,7 +440,7 @@
                     const url = `${ALPHA_VANTAGE_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${symbolWithExchange}&apikey=${apiKeyToUse}`;
                     
                     try {
-                        setInfo(`Workspaceing EOD price for ${symbolWithExchange} (key ${apiKeyIndexRef.current + 1}/${ALPHA_VANTAGE_API_KEYS.length})...`);
+                        setInfo(`Fetching EOD price for ${symbolWithExchange} (key ${apiKeyIndexRef.current + 1}/${ALPHA_VANTAGE_API_KEYS.length})...`);
                         const response = await fetch(url);
                         const responseText = await response.text(); 
                         
@@ -461,7 +495,7 @@
 
                     } catch (fetchError) { 
                         lastFetchError = fetchError; 
-                        console.error(`Workspace error for ${symbolWithExchange}:`, fetchError);
+                        console.error(`Fetch error for ${symbolWithExchange}:`, fetchError);
                     }
                 }
                 const finalErrorMsg = `All attempts for ${baseSymbol} failed. Last: ${lastFetchError ? lastFetchError.message : 'Unknown fetch error'}.`;
