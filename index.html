@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Portfolio Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <script src="https://unpkg.com/react@18/umd/react.development.js" defer></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" defer></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" defer></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif; 
+            background-color: #111827; 
+            color: #f3f4f6; 
+        }
+        html, body, #root {
+            min-height: 100vh;
+        }
+        .critical-error-message {
+            color: #ef4444; /* Tailwind red-500 */
+            background-color: #fee2e2; /* Tailwind red-100 */
+            border: 2px solid #f87171; /* Tailwind red-400 */
+            text-align: center; 
+            padding: 20px;
+            margin: 20px auto; /* Center the box */
+            border-radius: 8px;
+            max-width: 800px; /* Limit width for readability */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .critical-error-message h1 {
+            font-size: 1.75rem; /* Larger h1 */
+            font-weight: bold;
+            color: #b91c1c; /* Tailwind red-700 */
+            margin-bottom: 1rem; /* More space below h1 */
+        }
+         .critical-error-message code {
+            background-color: #fecaca; /* Tailwind red-200 */
+            padding: 3px 6px; /* Slightly more padding */
+            border-radius: 4px;
+            font-family: monospace;
+            color: #991b1b; /* Tailwind red-800 */
+            font-size: 0.95em;
+        }
+        .critical-error-message p {
+            margin-bottom: 0.75rem; /* Space between paragraphs */
+            line-height: 1.6; /* Better readability */
+            color: #7f1d1d; /* Tailwind red-900 for text */
+        }
+        .critical-error-message strong {
+            color: #991b1b; /* Tailwind red-800 */
+        }
+        .critical-error-message ol {
+            text-align: left;
+            display: inline-block;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            padding-left: 25px; /* Ensure bullets/numbers are visible */
+        }
+        .critical-error-message ol li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 20px;">
+            <h1 style="font-size: 1.875rem; font-weight: bold; color: #60a5fa; margin-bottom: 1rem;">Loading Portfolio Tracker...</h1>
+            <p style="color: #9ca3af;">If this message persists, please ensure JavaScript is enabled and check the browser console for errors.</p>
+            <svg style="width: 3rem; height: 3rem; margin-top: 1rem; animation: spin 1s linear infinite; color: #3b82f6;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <script type="text/babel"> {/* Main application script, Babel will transpile this */}
+        const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyChmrmY4JLB_Q6-DkZmg6-RHwX7KfKuIqA",
+            authDomain: "test-project-9f890.firebaseapp.com",
+            projectId: "test-project-9f890",
+            storageBucket: "test-project-9f890.appspot.com", 
+            messagingSenderId: "498848587964",
+            appId: "1:498848587964:web:19094e0fd3f29d178330b9"
+        };
+        
+        const FIRESTORE_APP_ID_NAMESPACE = 'my-standalone-portfolio'; 
+
+        const ALPHA_VANTAGE_API_KEYS = ['1D3WOJQHDQFYU46K', '4BBZHJK57IBM6Z94'];
+        const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
+
+        let app;
+        let auth;
+        let db;
+
+        try {
+            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_") || 
+                !firebaseConfig.projectId || firebaseConfig.projectId.includes("YOUR_")) {
+                 throw new Error("Firebase configuration appears to be using placeholder or incomplete values. Please verify all fields in `firebaseConfig` with your actual Firebase project credentials for a WEB APP.");
+            }
+
+            if (!firebase.apps.length) {
+                 app = firebase.initializeApp(firebaseConfig);
+            } else {
+                 app = firebase.app(); 
+            }
+            auth = firebase.auth();
+            db = firebase.firestore();
+        } catch (error) {
+            console.error("CRITICAL: Error initializing Firebase:", error);
+            const rootDiv = document.getElementById('root');
+            if (rootDiv) {
+                rootDiv.innerHTML = `
+                    <div class="critical-error-message">
+                        <h1>Firebase Initialization Error</h1>
+                        <p>${error.message}</p>
+                        <p><strong>Action Required:</strong> Please verify your <code>firebaseConfig</code> object in the script with the values from your Firebase project console. Ensure all fields are correct and that the Firebase project (<code>${firebaseConfig.projectId || "unknown"}</code>) is properly set up.</p>
+                    </div>`;
+            }
+            throw new Error("Halting script execution due to Firebase initialization failure. Please fix the firebaseConfig."); 
+        }
+
+        // --- Icon Placeholders ---
+        const IconPlaceholder = ({ text, className = "" }) => <span className={`inline-block px-1 ${className}`}>{text}</span>;
+        const PlusCircle = () => <IconPlaceholder text="[+]" />;
+        const Trash2 = () => <IconPlaceholder text="[Del]" />;
+        const Edit3 = () => <IconPlaceholder text="[Edit]" />;
+        const RefreshCw = () => <IconPlaceholder text="[Refr]" />;
+        const LogOut = () => <IconPlaceholder text="[Logout]" />;
+        const TrendingUp = () => <IconPlaceholder text="[Up]" />;
+        const TrendingDown = () => <IconPlaceholder text="[Down]" />;
+        const DollarSign = () => <IconPlaceholder text="[$]" />;
+        const Briefcase = () => <IconPlaceholder text="[Portf]" />;
+        const Info = () => <IconPlaceholder text="[i]" />;
+        const XCircle = () => <IconPlaceholder text="[X]" />;
+        const DownloadCloud = () => <IconPlaceholder text="[DL]" />;
+        const AlertTriangle = () => <IconPlaceholder text="[!]" />;
+        const LogInIcon = () => <IconPlaceholder text="[Login]" />;
+
+
+        const formatCurrency = (amount) => {
+            if (typeof amount !== 'number' || isNaN(amount)) return '₹0.00';
+            return `₹${amount.toFixed(2)}`;
+        };
+        const formatPercentage = (percentage) => {
+            if (typeof percentage !== 'number' || isNaN(percentage)) return '0.00%';
+            return `${percentage.toFixed(2)}%`;
+        };
+        const formatDate = (timestamp) => {
+            if (!timestamp) return 'N/A';
+            try {
+                if (timestamp.seconds) { 
+                    return new Date(timestamp.seconds * 1000).toLocaleString();
+                }
+                if (timestamp instanceof Date) { 
+                    return timestamp.toLocaleString();
+                }
+                if (typeof timestamp === 'object' && timestamp._seconds) { 
+                    return new Date(timestamp._seconds * 1000).toLocaleString();
+                }
+            } catch (e) { console.warn("Error formatting date:", timestamp, e); }
+            return 'Invalid Date';
+        };
+
+        const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
+                        <h3 className="text-xl font-semibold text-sky-400 mb-4">{title}</h3>
+                        <p className="text-gray-300 mb-6">{message}</p>
+                        <div className="flex justify-end space-x-3">
+                            <button onClick={onCancel} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium rounded-lg shadow-sm transition-colors">Cancel</button>
+                            <button onClick={onConfirm} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-sm transition-colors">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Authentication Form Component (Login Only)
+        const AuthForm = ({ onAuthSuccess }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [authError, setAuthError] = useState('');
+            const [authLoading, setAuthLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setAuthError('');
+                setAuthLoading(true);
+                if (!auth) {
+                    setAuthError("Firebase Auth not initialized.");
+                    setAuthLoading(false);
+                    return;
+                }
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    // onAuthStateChanged will handle setting the user state in App component
+                } catch (err) {
+                    console.error("Login error:", err);
+                    setAuthError(err.message);
+                } finally {
+                    setAuthLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4">
+                    <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-2xl">
+                        <h2 className="text-3xl font-bold text-center text-sky-400">
+                            Login to Portfolio
+                        </h2>
+                        {authError && <p className="text-red-400 bg-red-900/50 p-3 rounded-md text-sm text-center">{authError}</p>}
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email address</label>
+                                <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                                    className="mt-1 block w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                    placeholder="you@example.com" />
+                            </div>
+                            <div>
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-300">Password</label>
+                                <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                                    className="mt-1 block w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                    placeholder="••••••••" />
+                            </div>
+                            <div>
+                                <button type="submit" disabled={authLoading}
+                                    className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {authLoading ? <RefreshCw className="animate-spin h-5 w-5 mr-2" /> : <LogInIcon className="h-5 w-5 mr-2" />}
+                                    {authLoading ? 'Processing...' : 'Sign In'}
+                                </button>
+                            </div>
+                        </form>
+                        {/* Removed the toggle to register new users */}
+                    </div>
+                </div>
+            );
+        };
+
+
+        function App() {
+            const [user, setUserState] = useState(null);
+            const [userId, setUserId] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false); 
+            const [holdings, setHoldings] = useState([]);
+            const [isLoading, setIsLoading] = useState(true); 
+            const [isFetchingPrices, setIsFetchingPrices] = useState(false);
+            const [showAddForm, setShowAddForm] = useState(false);
+            const [editingHolding, setEditingHolding] = useState(null);
+            const [error, setError] = useState(null);
+            const [info, setInfo] = useState(null);
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [holdingToDelete, setHoldingToDelete] = useState(null);
+            const [lastPriceUpdateAttempt, setLastPriceUpdateAttempt] = useState(null);
+            const apiKeyIndexRef = useRef(0);
+
+            useEffect(() => {
+                if (!auth) { 
+                     setError("Firebase Auth service is not available. App cannot function.");
+                    setIsAuthReady(true); 
+                    setIsLoading(false); 
+                    return;
+                }
+                const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+                    setUserState(currentUser); 
+                    setUserId(currentUser ? currentUser.uid : null);
+                    setIsAuthReady(true); 
+                    if (!currentUser) { 
+                        setHoldings([]); 
+                        setIsLoading(false);
+                    }
+                });
+                return () => unsubscribe();
+            }, []); 
+
+            useEffect(() => {
+                if (!isAuthReady) return; 
+
+                if (!userId) { 
+                    setHoldings([]); 
+                    setIsLoading(false); 
+                    return;
+                }
+                
+                if (!db) {
+                     setError("Firestore database service is not available.");
+                     setIsLoading(false);
+                     return;
+                }
+
+                setIsLoading(true); 
+                const holdingsCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`;
+                const q = db.collection(holdingsCollectionPath); 
+                
+                const unsubscribe = q.onSnapshot((querySnapshot) => {
+                    const holdingsData = [];
+                    querySnapshot.forEach((doc) => {
+                        holdingsData.push({ id: doc.id, ...doc.data() });
+                    });
+                    setHoldings(holdingsData);
+                    setIsLoading(false); 
+                    setError(null);
+                }, (err) => {
+                    console.error("Error fetching holdings:", err);
+                    setError(`Failed to load portfolio: ${err.message}.`);
+                    setIsLoading(false);
+                });
+                return () => unsubscribe();
+            }, [isAuthReady, userId]); 
+
+            const handleSaveHolding = async (holdingData) => {
+                if (!db || !userId) { setError("Database not available."); return; }
+                
+                const holdingPayload = {
+                    symbol: holdingData.symbol.toUpperCase().trim(),
+                    name: holdingData.name.trim(),
+                    quantity: parseFloat(holdingData.quantity),
+                    purchasePrice: parseFloat(holdingData.purchasePrice),
+                };
+
+                if (editingHolding && holdingData.id) { 
+                    try {
+                        const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingData.id);
+                        await holdingDocRef.update({
+                            name: holdingPayload.name, // Symbol is not updated
+                            quantity: holdingPayload.quantity,
+                            purchasePrice: holdingPayload.purchasePrice,
+                            // Keep existing currentPrice, lastPriceUpdate, fetchedSymbol unless updated by price fetch
+                        });
+                        setInfo(`Holding ${holdingPayload.symbol} updated successfully.`);
+                    } catch (updateError) {
+                        console.error("Error updating holding:", updateError);
+                        setError(`Failed to update holding: ${updateError.message}`);
+                    }
+                } else { 
+                    try {
+                        const holdingsCollectionPath = `artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`;
+                        await db.collection(holdingsCollectionPath).add({
+                            ...holdingPayload,
+                            currentPrice: holdingPayload.purchasePrice, 
+                            lastPriceUpdate: null, 
+                            fetchedSymbol: null, 
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                        });
+                        setInfo(`Holding ${holdingPayload.symbol} added successfully.`);
+                    } catch (addError) {
+                        console.error("Error adding holding:", addError);
+                        setError(`Failed to add holding: ${addError.message}`);
+                    }
+                }
+                setShowAddForm(false); 
+                setEditingHolding(null); 
+            };
+
+            const handleEditHolding = (holdingToEdit) => {
+                setEditingHolding(holdingToEdit);
+                setShowAddForm(true);
+            };
+            
+            const handleCancelEdit = () => {
+                setShowAddForm(false);
+                setEditingHolding(null);
+            };
+
+
+            const requestDeleteHolding = (holdingId) => {
+                setHoldingToDelete(holdingId); setShowDeleteConfirm(true);
+            };
+
+            const confirmDeleteHolding = async () => {
+                if (!db || !userId || !holdingToDelete) {
+                    setError("Database not available or no holding selected.");
+                    setShowDeleteConfirm(false); return;
+                }
+                try {
+                    const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holdingToDelete); 
+                    await holdingDocRef.delete(); 
+                    setError(null);
+                } catch (deleteError) {
+                    console.error("Error deleting holding:", deleteError);
+                    setError(`Failed to delete holding: ${deleteError.message}`);
+                } finally {
+                    setShowDeleteConfirm(false); setHoldingToDelete(null);
+                }
+            };
+            
+            const fetchEodPriceForHolding = async (holding, apiKeyToUse) => {
+                const baseSymbol = holding.symbol.toUpperCase();
+                const suffixesToTry = ['.NS', '.BSE']; 
+                let lastFetchError = null;
+
+                for (const suffix of suffixesToTry) {
+                    const symbolWithExchange = `${baseSymbol}${suffix}`;
+                    const url = `${ALPHA_VANTAGE_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${symbolWithExchange}&apikey=${apiKeyToUse}`;
+                    
+                    try {
+                        setInfo(`Workspaceing EOD price for ${symbolWithExchange} (key ${apiKeyIndexRef.current + 1}/${ALPHA_VANTAGE_API_KEYS.length})...`);
+                        const response = await fetch(url);
+                        const responseText = await response.text(); 
+                        
+                        if (!response.ok) {
+                            lastFetchError = new Error(`API req for ${symbolWithExchange} fail (status ${response.status}). Resp: ${responseText.substring(0,100)}`);
+                            console.warn(lastFetchError.message); 
+                            if (response.status === 404) continue; 
+                            continue;
+                        }
+                        
+                        const data = JSON.parse(responseText); 
+
+                        if (data['Error Message']) {
+                            lastFetchError = new Error(`API Error for ${symbolWithExchange}: ${data['Error Message']}`);
+                            console.warn(lastFetchError.message); continue; 
+                        }
+                        if (data['Note']) { 
+                             console.warn(`Alpha Vantage API Note for ${symbolWithExchange}: ${data['Note']}`);
+                             setInfo(`API Note for ${symbolWithExchange}: ${data['Note']}.`);
+                        }
+                         if (data['Information']) { 
+                            lastFetchError = new Error(`API Info for ${symbolWithExchange}: ${data['Information']}`);
+                            console.warn(lastFetchError.message); continue; 
+                        }
+
+                        const timeSeries = data['Time Series (Daily)'];
+                        if (!timeSeries || Object.keys(timeSeries).length === 0) {
+                            lastFetchError = new Error(`No time series for ${symbolWithExchange}. API Resp: ${JSON.stringify(data).substring(0,200)}`);
+                            console.warn(lastFetchError.message); continue; 
+                        }
+                        
+                        const latestDate = Object.keys(timeSeries)[0];
+                        if (!latestDate || !timeSeries[latestDate] || !timeSeries[latestDate]['4. close']) {
+                            lastFetchError = new Error(`Could not parse closing price for ${symbolWithExchange} on ${latestDate}.`);
+                            console.warn(lastFetchError.message); continue; 
+                        }
+                        const latestClosePrice = parseFloat(timeSeries[latestDate]['4. close']);
+
+                        if (isNaN(latestClosePrice)) {
+                             lastFetchError = new Error(`Parsed closing price for ${symbolWithExchange} is not a number.`);
+                             console.warn(lastFetchError.message); continue; 
+                        }
+
+                        const holdingDocRef = db.collection(`artifacts/${FIRESTORE_APP_ID_NAMESPACE}/users/${userId}/holdings`).doc(holding.id);
+                        await holdingDocRef.update({ 
+                            currentPrice: latestClosePrice,
+                            lastPriceUpdate: firebase.firestore.FieldValue.serverTimestamp(),
+                            fetchedSymbol: symbolWithExchange 
+                        });
+                        setInfo(`Updated ${baseSymbol} (as ${symbolWithExchange}) to ${formatCurrency(latestClosePrice)}.`);
+                        return { success: true, symbol: baseSymbol, fetchedSymbol: symbolWithExchange };
+
+                    } catch (fetchError) { 
+                        lastFetchError = fetchError; 
+                        console.error(`Workspace error for ${symbolWithExchange}:`, fetchError);
+                    }
+                }
+                const finalErrorMsg = `All attempts for ${baseSymbol} failed. Last: ${lastFetchError ? lastFetchError.message : 'Unknown fetch error'}.`;
+                console.error(finalErrorMsg);
+                return { success: false, symbol: baseSymbol, error: lastFetchError ? lastFetchError.message : 'Unknown error' };
+            };
+
+            const handleRefreshAllEodPrices = async () => {
+                if (!db || !userId || holdings.length === 0) {
+                    setInfo("No holdings to refresh or database not available."); return;
+                }
+                setIsFetchingPrices(true); setError(null); 
+                setInfo(`Starting EOD price refresh for ${holdings.length} holdings...`);
+                setLastPriceUpdateAttempt(new Date());
+                let successCount = 0, errorCount = 0;
+                let cumulativeErrorMessages = [];
+
+                for (let i = 0; i < holdings.length; i++) {
+                    const holding = holdings[i];
+                    const currentKey = ALPHA_VANTAGE_API_KEYS[apiKeyIndexRef.current];
+                    const result = await fetchEodPriceForHolding(holding, currentKey);
+                    apiKeyIndexRef.current = (apiKeyIndexRef.current + 1) % ALPHA_VANTAGE_API_KEYS.length;
+
+                    if (result.success) successCount++;
+                    else {
+                        errorCount++;
+                        if(result.error) cumulativeErrorMessages.push(`${holding.symbol}: ${result.error.substring(0,100)}...`);
+                    }
+                    
+                    if (i < holdings.length - 1) { 
+                        const delay = 10000; 
+                        setInfo(`Waiting ${delay/1000}s... (${i + 1}/${holdings.length} processed)`);
+                        await new Promise(resolve => setTimeout(resolve, delay)); 
+                    }
+                }
+                let summaryMessage = `Refresh complete. ${successCount} updated, ${errorCount} failed.`;
+                if (errorCount > 0) {
+                     setError(`${errorCount} stock(s) failed. First error: ${cumulativeErrorMessages[0] || 'N/A'}. See console.`);
+                }
+                setInfo(summaryMessage);
+                setIsFetchingPrices(false);
+            };
+
+            const handleLogout = async () => {
+                if (!auth) return;
+                try {
+                    await auth.signOut();
+                } catch (logoutError) {
+                    console.error("Error signing out:", logoutError);
+                    setError(`Logout failed: ${logoutError.message}`);
+                }
+            };
+
+            const portfolioSummary = useMemo(() => {
+                let ti = 0, tcv = 0; 
+                holdings.forEach(h => {
+                    ti += (h.quantity || 0) * (h.purchasePrice || 0);
+                    tcv += (h.quantity || 0) * (h.currentPrice || 0);
+                });
+                const tr = tcv - ti;
+                const trp = ti !== 0 ? (tr / ti) * 100 : 0;
+                return { totalInvestment: ti, totalCurrentValue: tcv, totalReturns: tr, totalReturnsPercentage: trp };
+            }, [holdings]);
+
+            // --- Render Logic ---
+            if (!isAuthReady || isLoading) return <LoadingSpinner message={!isAuthReady ? "Initializing authentication..." : (userId ? "Loading portfolio data..." : "Authenticating...")} />;
+            
+            if (!auth || !db) { 
+                 return (
+                    <div className="critical-error-message">
+                        <h1>Application Cannot Run</h1>
+                        <p>Firebase services (Authentication or Firestore) are not available. This is likely due to an incorrect Firebase configuration in the HTML script.</p>
+                        <p><strong>Action Required:</strong> Please verify your <code>firebaseConfig</code> object in the script with the values from your Firebase project console.</p>
+                    </div>
+                );
+            }
+            
+            if (!user) { 
+                return <AuthForm />;
+            }
+            
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-900 to-slate-800 text-gray-100 p-4 sm:p-6 md:p-8 font-sans">
+                    <ConfirmationModal isOpen={showDeleteConfirm} title="Confirm Deletion" message="Are you sure you want to delete this holding?" onConfirm={confirmDeleteHolding} onCancel={() => { setShowDeleteConfirm(false); setHoldingToDelete(null); }} />
+                    <div className="container mx-auto max-w-6xl">
+                        <header className="mb-8 flex flex-col sm:flex-row justify-between items-center">
+                            <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-600 mb-4 sm:mb-0">My Share Portfolio</h1>
+                            <div className="flex items-center space-x-3">
+                                {user && <span className="text-xs px-3 py-1 bg-gray-700 rounded-full shadow">User: <span className="font-mono">{user.email || userId.substring(0,12) + '...'}</span></span>}
+                                <button onClick={handleLogout} className="p-2 bg-red-600 hover:bg-red-700 rounded-full shadow-md" title="Logout"><LogOut /></button>
+                            </div>
+                        </header>
+
+                        {error && <ErrorMessage message={error} onClose={() => setError(null)} />}
+                        {info && <InfoMessage message={info} onClose={() => setInfo(null)} />}
+                        
+                        <div className="my-2 p-3 bg-yellow-900/70 border border-yellow-700 rounded-lg text-yellow-200 text-sm flex items-center">
+                            <AlertTriangle className="mr-2 shrink-0 h-5 w-5"/>
+                            <span>
+                                Prices are EOD from Alpha Vantage. {ALPHA_VANTAGE_API_KEYS.length} API keys used. Updates manual & rate-limited. App attempts `SYMBOL.NS` then `SYMBOL.BSE`.
+                                {lastPriceUpdateAttempt && ` Last refresh: ${formatDate(lastPriceUpdateAttempt)}.`}
+                            </span>
+                        </div>
+
+                        <PortfolioSummaryCards summary={portfolioSummary} />
+
+                        <div className="my-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                             <button 
+                                onClick={() => { setShowAddForm(true); setEditingHolding(null); }} 
+                                className="flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md">
+                                <PlusCircle className="mr-2 h-5 w-5" /> Add New Holding
+                            </button>
+                            <button onClick={handleRefreshAllEodPrices} disabled={isFetchingPrices || holdings.length === 0} className="flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isFetchingPrices ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <DownloadCloud className="mr-2 h-5 w-5" />}
+                                {isFetchingPrices ? 'Fetching Prices...' : 'Refresh Daily Prices'}
+                            </button>
+                        </div>
+
+                        {showAddForm && <AddHoldingForm 
+                                            onSubmit={handleSaveHolding} 
+                                            onCancel={handleCancelEdit} 
+                                            initialData={editingHolding} 
+                                        />}
+                        
+                        {!isLoading && !holdings.length && !showAddForm && userId && ( 
+                             <div className="mt-10 text-center p-8 bg-gray-800 rounded-xl shadow-xl">
+                                <Briefcase className="mx-auto h-16 w-16 text-sky-400 mb-6" />
+                                <h2 className="text-2xl font-semibold text-gray-300 mb-3">Your Portfolio is Empty</h2>
+                                <p className="text-gray-400 mb-6">Click "Add New Holding" to start tracking investments.</p>
+                            </div>
+                        )}
+                        {holdings.length > 0 && <HoldingsTable holdings={holdings} onDelete={requestDeleteHolding} onEdit={handleEditHolding} />}
+                        
+                        <footer className="mt-12 text-center text-sm text-gray-500">
+                            <p>&copy; {new Date().getFullYear()} Share Portfolio Tracker. App ID: <span className="font-mono">{FIRESTORE_APP_ID_NAMESPACE}</span></p>
+                        </footer>
+                    </div>
+                </div>
+            );
+        }
+
+        const PortfolioSummaryCards = ({ summary }) => { 
+            const { totalInvestment, totalCurrentValue, totalReturns, totalReturnsPercentage } = summary;
+            const isProfit = totalReturns >= 0;
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                    <SummaryCard title="Total Investment" value={formatCurrency(totalInvestment)} icon={<DollarSign className="text-blue-400 h-5 w-5" />} />
+                    <SummaryCard title="Current Value (EOD)" value={formatCurrency(totalCurrentValue)} icon={<Briefcase className="text-green-400 h-5 w-5" />} />
+                    <SummaryCard title="Total P/L" value={formatCurrency(totalReturns)} icon={isProfit ? <TrendingUp className="text-emerald-400 h-5 w-5" /> : <TrendingDown className="text-red-400 h-5 w-5" />} valueColor={isProfit ? "text-emerald-400" : "text-red-400"} />
+                    <SummaryCard title="Total P/L %" value={formatPercentage(totalReturnsPercentage)} icon={isProfit ? <TrendingUp className="text-emerald-400 h-5 w-5" /> : <TrendingDown className="text-red-400 h-5 w-5" />} valueColor={isProfit ? "text-emerald-400" : "text-red-400"} />
+                </div>
+            );
+        };
+
+        const SummaryCard = ({ title, value, icon, valueColor = "text-gray-100" }) => ( 
+            <div className="bg-gray-800 p-5 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-400">{title}</h3>
+                    {icon && React.isValidElement(icon) && <div className="p-2 bg-gray-700 rounded-full">{React.cloneElement(icon)}</div>} 
+                </div>
+                <p className={`text-2xl font-semibold ${valueColor}`}>{value}</p>
+            </div>
+        );
+
+        const AddHoldingForm = ({ onSubmit, onCancel, initialData }) => { 
+            const [symbol, setSymbol] = useState('');
+            const [name, setName] = useState('');
+            const [quantity, setQuantity] = useState('');
+            const [purchasePrice, setPurchasePrice] = useState('');
+            const [formError, setFormError] = useState('');
+
+            const isEditMode = Boolean(initialData);
+
+            useEffect(() => {
+                if (isEditMode && initialData) {
+                    setSymbol(initialData.symbol || '');
+                    setName(initialData.name || '');
+                    setQuantity(initialData.quantity !== undefined ? String(initialData.quantity) : '');
+                    setPurchasePrice(initialData.purchasePrice !== undefined ? String(initialData.purchasePrice) : '');
+                } else {
+                    setSymbol(''); setName(''); setQuantity(''); setPurchasePrice('');
+                }
+            }, [initialData, isEditMode]);
+
+
+            const handleSubmit = (e) => {
+                e.preventDefault(); setFormError('');
+                if (!symbol.trim() || !name.trim() || !quantity || !purchasePrice) { setFormError('All fields are required.'); return; }
+                const numQuantity = parseFloat(quantity); const numPurchasePrice = parseFloat(purchasePrice);
+                if (isNaN(numQuantity) || numQuantity <= 0) { setFormError('Quantity must be > 0.'); return; }
+                if (isNaN(numPurchasePrice) || numPurchasePrice <= 0) { setFormError('Purchase price must be > 0.'); return; }
+                
+                onSubmit({ 
+                    id: isEditMode ? initialData.id : undefined, 
+                    symbol: symbol, 
+                    name: name, 
+                    quantity: numQuantity, 
+                    purchasePrice: numPurchasePrice 
+                });
+            };
+            return (
+                <div className="my-6 p-6 bg-gray-800 rounded-xl shadow-xl">
+                    <h2 className="text-xl font-semibold mb-6 text-sky-400">{isEditMode ? 'Edit Holding' : 'Add New Stock Holding'}</h2>
+                    {formError && <p className="text-red-400 bg-red-900/50 p-3 rounded-md mb-4 text-sm">{formError}</p>}
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="symbol" className="block text-sm font-medium text-gray-300 mb-1">Stock Symbol</label>
+                                <input type="text" id="symbol" value={symbol} 
+                                       readOnly={isEditMode} 
+                                       onChange={(e) => !isEditMode && setSymbol(e.target.value)} 
+                                       required 
+                                       className={`w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none ${isEditMode ? 'cursor-not-allowed opacity-70' : ''}`} />
+                            </div>
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Stock Name</label>
+                                <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
+                            </div>
+                            <div>
+                                <label htmlFor="quantity" className="block text-sm font-medium text-gray-300 mb-1">Quantity</label>
+                                <input type="number" id="quantity" value={quantity} onChange={(e) => setQuantity(e.target.value)} required min="0.0001" step="any" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
+                            </div>
+                            <div>
+                                <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-300 mb-1">Purchase Price (per share)</label>
+                                <input type="number" id="purchasePrice" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} required min="0.01" step="any" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
+                            </div>
+                        </div>
+                        <div className="flex justify-end space-x-3 pt-2">
+                            <button type="button" onClick={onCancel} className="px-5 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium rounded-lg shadow-sm">Cancel</button>
+                            <button type="submit" className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-sm">
+                                {isEditMode ? 'Update Holding' : 'Add Holding'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+
+        const HoldingsTable = ({ holdings, onDelete, onEdit }) => { 
+            if (!holdings || holdings.length === 0) return null;
+            return (
+                <div className="mt-8 bg-gray-800 shadow-xl rounded-xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-max text-sm text-left text-gray-300">
+                            <thead className="text-xs text-sky-300 uppercase bg-gray-700/50">
+                                <tr>
+                                    {['Symbol', 'Fetched As', 'Name', 'Qty', 'Buy Price', 'EOD Price', 'Last Update', 'Investment', 'Current Value', 'P/L', 'P/L %', 'Actions'].map(header => (
+                                        <th key={header} scope="col" className="px-5 py-4 whitespace-nowrap">{header}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700">
+                                {holdings.map((h) => {
+                                    const qty = h.quantity || 0, pp = h.purchasePrice || 0, cp = h.currentPrice || 0;
+                                    const invVal = qty * pp, currVal = qty * cp;
+                                    const pl = currVal - invVal;
+                                    const plp = invVal !== 0 ? (pl / invVal) * 100 : 0;
+                                    const isProfit = pl >= 0;
+                                    return (
+                                        <tr key={h.id} className="hover:bg-gray-700/70 transition-colors">
+                                            <td className="px-5 py-4 font-medium text-sky-400 whitespace-nowrap">{h.symbol}</td>
+                                            <td className="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">{h.fetchedSymbol || 'N/A'}</td>
+                                            <td className="px-5 py-4 whitespace-nowrap">{h.name}</td>
+                                            <td className="px-5 py-4 text-right">{qty.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:4})}</td>
+                                            <td className="px-5 py-4 text-right">{formatCurrency(pp)}</td>
+                                            <td className="px-5 py-4 text-right font-semibold">{formatCurrency(cp)}</td>
+                                            <td className="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">{h.lastPriceUpdate ? formatDate(h.lastPriceUpdate) : 'N/A'}</td>
+                                            <td className="px-5 py-4 text-right">{formatCurrency(invVal)}</td>
+                                            <td className="px-5 py-4 text-right font-semibold">{formatCurrency(currVal)}</td>
+                                            <td className={`px-5 py-4 text-right font-semibold ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(pl)}</td>
+                                            <td className={`px-5 py-4 text-right font-semibold ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>{formatPercentage(plp)}</td>
+                                            <td className="px-5 py-4 text-center space-x-2">
+                                                <button onClick={() => onEdit(h)} title="Edit Holding" className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/50 rounded-full"><Edit3 className="h-5 w-5" /></button>
+                                                <button onClick={() => onDelete(h.id)} title="Delete Holding" className="p-2 text-red-500 hover:text-red-400 hover:bg-red-900/50 rounded-full"><Trash2 className="h-5 w-5" /></button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const LoadingSpinner = ({ message = "Loading..." }) => ( 
+            <div className="flex flex-col items-center justify-center text-center p-10 bg-gray-800 rounded-xl shadow-lg my-8">
+                <svg className="animate-spin h-12 w-12 text-sky-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <p className="text-lg font-medium text-gray-300">{message}</p>
+            </div>
+        );
+
+        const ErrorMessage = ({ message, onClose }) => { 
+            return ( 
+                <div className="bg-red-800 border border-red-600 text-red-100 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
+                    <div className="flex items-center"><XCircle className="h-5 w-5 mr-2 text-red-300" /><div><strong className="font-bold">Error: </strong><span className="block sm:inline">{message}</span></div></div>
+                    <button onClick={onClose} className="absolute top-0 bottom-0 right-0 px-4 py-3" title="Close"><XCircle className="h-5 w-5 text-red-300 hover:text-red-100" /></button>
+                </div>
+            );
+        };
+        
+        const InfoMessage = ({ message, onClose }) => { 
+            return (
+            <div className="bg-blue-800 border border-blue-600 text-blue-100 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="status">
+                <div className="flex items-center"><Info className="h-5 w-5 mr-2 text-blue-300" /><div><strong className="font-bold">Info: </strong><span className="block sm:inline">{message}</span></div></div>
+                <button onClick={onClose} className="absolute top-0 bottom-0 right-0 px-4 py-3" title="Close"><XCircle className="h-5 w-5 text-blue-300 hover:text-blue-100" /></button>
+            </div>
+        )};
+
+        const root = ReactDOM.createRoot(document.getElementById('root')); 
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
